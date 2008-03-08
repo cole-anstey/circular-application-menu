@@ -2,7 +2,7 @@
 
 = Introduction =
 
-The circular-applications-menu displaying large icons.
+The circular-application-menu displaying large icons.
 
 
 = Details =
