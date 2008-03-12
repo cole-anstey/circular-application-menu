@@ -89,9 +89,7 @@ main (int argc, char **argv)
 
     if (FALSE == gdk_display_supports_composite(gdk_display_get_default()))
     {
-        g_message("The circular-main-menu only works with composited desktops.");
-
-        return 0;
+        g_message("The circular-main-menu only displays correctly with composited desktops.");
     }
 
 	window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
