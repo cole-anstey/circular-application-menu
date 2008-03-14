@@ -1,0 +1,6 @@
+My thanks go to the following people who have contributed...
+
+azathothgr (compiz forum) 	- Highlighted a segfault when retrieving an icon via gmenu_tree_entry_get_icon() in ca_circular_application_menu_show_leaf().
+inspired.ex (code.google.com) 	- Reported a problem with a displayed message after querying gdk_display_supports_composite(), that stated compiz wasn't available when it was.
+
+If your names not included and you think it should be then please let me know.
