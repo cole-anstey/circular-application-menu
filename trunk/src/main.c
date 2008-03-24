@@ -34,24 +34,28 @@ static CaFileLeaf* root_fileleaf = NULL;
 int
 main (int argc, char **argv)
 {
-	GtkWidget* window;
-	GtkWidget* circular_applications_menu;
+    GtkWidget* window;
+    GtkWidget* circular_application_menu;
     GOptionContext* optioncontext;
     GError* error = NULL;
     GdkScreen* screen;
     GdkColormap* colormap;
     GMenuTree* tree;
     GMenuTreeDirectory* root;
-    gboolean hideindicator;
-    gboolean glyphsize;
+    gboolean hide_preview;
+    gboolean warp_mouse;
+    gboolean glyph_size;
 
     GOptionEntry options[] =
     {
-        { "hideindicator", 'h', 0, G_OPTION_ARG_NONE, &hideindicator, "Hides the indicator displayed when the mouse is over a folder.", NULL  },
-        { "glyphsize", 'g', 0, G_OPTION_ARG_INT, &glyphsize, "The size of the glyphs [S: 1=small 2=medium 3=large (default)]. ", "S"  },
+        { "hide-preview", 'h', 0, G_OPTION_ARG_NONE, &hide_preview, "Hides the menu preview displayed when the mouse is over a menu.", NULL  },
+        { "warp-mouse-off", 'w', 0, G_OPTION_ARG_NONE, &warp_mouse, "Stops the mouse from warping to the centre of the screen whenever a menu is shown.", NULL  },
+        { "glyph-size", 'g', 0, G_OPTION_ARG_INT, &glyph_size, "The size of the glyphs [S: 1=small 2=medium 3=large (default)]. ", "S"  },
         { NULL }
     };
 
+    /* Initialise. */
+    gtk_init (&argc, &argv);
     gnome_vfs_init();
 
     tree = gmenu_tree_lookup ("applications.menu", GMENU_TREE_FLAGS_NONE);
@@ -61,12 +65,13 @@ main (int argc, char **argv)
 
     if (root == NULL)
     {
-        g_warning (_("Menu tree is empty"));
+        g_warning (_("The menu tree is empty."));
     }
 
     /* Default values. */
-    hideindicator = FALSE;
-    glyphsize = 3;
+    hide_preview = FALSE;
+    warp_mouse = FALSE;
+    glyph_size = 3;
 
     /* Parse the arguments. */
     optioncontext = g_option_context_new("- circular-application-menu.");
@@ -74,27 +79,24 @@ main (int argc, char **argv)
     g_option_context_parse(optioncontext, &argc, &argv, NULL);
 
     if (!g_option_context_parse (optioncontext, &argc, &argv, &error) ||
-        (glyphsize < 1) ||
-        (glyphsize > 3))
+        (glyph_size < 1) ||
+        (glyph_size > 3))
     {
-        g_print ("Option parsing failed: %s\n", error->message);
+        g_print (_("Option parsing failed: %s\n"), error->message);
 
         return -1;
     }
 
     g_option_context_free(optioncontext);
 
-    /* Initialise gtk. */
-	gtk_init (&argc, &argv);
-
     if (FALSE == gdk_display_supports_composite(gdk_display_get_default()))
     {
-        g_message("The circular-main-menu only displays correctly with composited desktops.");
+        g_message(_("The circular-main-menu only displays correctly with composited desktops."));
     }
 
-	window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+    window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
 
-    /* Assign a alpha colormap to the window. */
+    /* Assign an alpha colormap to the window. */
     screen = gtk_widget_get_screen (window);
     colormap = gdk_screen_get_rgba_colormap (screen);
 
@@ -107,24 +109,29 @@ main (int argc, char **argv)
     gtk_widget_realize (window);
     gdk_window_set_decorations(window->window, 0);
 
-	circular_applications_menu = ca_circular_applications_menu_new (gdk_screen_width(), gdk_screen_height(), hideindicator, glyphsize);
-	gtk_container_add (GTK_CONTAINER (window), circular_applications_menu);
+	/* Constructs a new dockband widget. */
+    circular_application_menu = ca_circular_application_menu_new (
+		hide_preview,
+		warp_mouse,
+		glyph_size);
+    gtk_container_add (GTK_CONTAINER (window), circular_application_menu);
 
-	g_signal_connect (window, "destroy", G_CALLBACK (gtk_main_quit), NULL);
+    g_signal_connect (window, "destroy", G_CALLBACK (gtk_main_quit), NULL);
 
     /* Make the application full screen, without this it will be below any top edged panel. */
     gtk_window_fullscreen(GTK_WINDOW(window));
 
-	gtk_widget_show_all (window);
+    gtk_widget_show_all (window);
 
-    root_fileleaf = ca_circular_applications_menu(root);
+	/* Shows the menu tree directory which becomes the root file leaf. */
+    root_fileleaf = ca_circular_application_menu(CA_CIRCULAR_APPLICATION_MENU(circular_application_menu), root);
 
     /* Invalidate the widget. */
     gtk_widget_queue_draw(window);
 
-	gtk_main ();
+    gtk_main ();
 
     gmenu_tree_item_unref (root);
 
-	return 0;
+    return 0;
 }
