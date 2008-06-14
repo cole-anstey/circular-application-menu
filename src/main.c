@@ -106,14 +106,14 @@ main (int argc, char **argv)
     }
 
     gtk_widget_set_colormap (window, colormap);
-    gtk_widget_realize (window);
+    /*gtk_widget_realize (window);*/
     gdk_window_set_decorations(window->window, 0);
 
-	/* Constructs a new dockband widget. */
+    /* Constructs a new dockband widget. */
     circular_application_menu = ca_circular_application_menu_new (
-		hide_preview,
-		warp_mouse,
-		glyph_size);
+        hide_preview,
+        warp_mouse,
+        glyph_size);
     gtk_container_add (GTK_CONTAINER (window), circular_application_menu);
 
     g_signal_connect (window, "destroy", G_CALLBACK (gtk_main_quit), NULL);
@@ -123,7 +123,7 @@ main (int argc, char **argv)
 
     gtk_widget_show_all (window);
 
-	/* Shows the menu tree directory which becomes the root file leaf. */
+    /* Shows the menu tree directory which becomes the root file leaf. */
     root_fileleaf = ca_circular_application_menu(CA_CIRCULAR_APPLICATION_MENU(circular_application_menu), root);
 
     /* Invalidate the widget. */
