@@ -1614,9 +1614,10 @@ _ca_circular_application_menu_render_fileleaf(
 
             /* Smaller the circumference then larger the angle. */
             circumference_percentage =
-            	(private->tab_width  - (FARTHEST_TAB_CIRCLE_RADIUS * 2)) /
+                private->tab_width /
             	_ca_circular_application_menu_circumference_from_radius(
 					fileleaf->radius + RADIUS_SPACER + CLOSEST_TAB_CIRCLE_RADIUS + private->tab_height + FARTHEST_TAB_CIRCLE_RADIUS);
+
             common_angle = (360.0 * circumference_percentage) / 2;
 
             fileleaf->_menu_render->lowest_angle_farthest =
@@ -1637,7 +1638,7 @@ _ca_circular_application_menu_render_fileleaf(
                 fileleaf->_central_glyph->x,
                 fileleaf->_central_glyph->y,
                 fileleaf->_menu_render->lowest_angle_farthest,
-                fileleaf->radius + RADIUS_SPACER + CLOSEST_TAB_CIRCLE_RADIUS + private->tab_height,
+                fileleaf->radius + RADIUS_SPACER + FARTHEST_TAB_CIRCLE_RADIUS + private->tab_height,
                 &fileleaf->_menu_render->Ccircle_x,
                 &fileleaf->_menu_render->Ccircle_y);
 
@@ -1645,7 +1646,7 @@ _ca_circular_application_menu_render_fileleaf(
                 fileleaf->_central_glyph->x,
                 fileleaf->_central_glyph->y,
                 fileleaf->_menu_render->highest_angle_farthest,
-                fileleaf->radius + RADIUS_SPACER + CLOSEST_TAB_CIRCLE_RADIUS + private->tab_height,
+                fileleaf->radius + RADIUS_SPACER + FARTHEST_TAB_CIRCLE_RADIUS + private->tab_height,
                 &fileleaf->_menu_render->Ecircle_x,
                 &fileleaf->_menu_render->Ecircle_y);
 
