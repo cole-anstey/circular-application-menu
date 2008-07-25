@@ -106,9 +106,11 @@ main (int argc, char **argv)
     }
 
     gtk_widget_set_colormap (window, colormap);
-    /*gtk_widget_realize (window);*/
+    /*
+    Does not seem to be required.
+    gtk_widget_realize (window);
     gdk_window_set_decorations(window->window, 0);
-
+    */
     /* Constructs a new dockband widget. */
     circular_application_menu = ca_circular_application_menu_new (
         hide_preview,
