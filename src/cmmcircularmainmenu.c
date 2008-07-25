@@ -2383,7 +2383,7 @@ _ca_get_point_from_source_offset(
         return; /* No distance away from source. */
 
     g_assert(angle >= 0.0);
-    g_assert(angle <= 359.0);
+    g_assert(angle <= 359.9);
 
     degree_in_radius = angle * (M_PI / 180);
 
