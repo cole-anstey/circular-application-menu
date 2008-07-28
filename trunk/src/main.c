@@ -83,7 +83,7 @@ main (int argc, char **argv)
         { "hide-preview", 'h', 0, G_OPTION_ARG_NONE, &hide_preview, "Hides the menu preview displayed when the mouse is over a menu.", NULL  },
         { "warp-mouse-off", 'w', 0, G_OPTION_ARG_NONE, &warp_mouse, "Stops the mouse from warping to the centre of the screen whenever a menu is shown.", NULL  },
         { "glyph-size", 'g', 0, G_OPTION_ARG_INT, &glyph_size, "The size of the glyphs [S: 1=small 2=medium 3=large (default)]. ", "S"  },
-        { "blur-off", 'w', 0, G_OPTION_ARG_NONE, &blur, "Stops the blur from underneath the menu.", NULL  },
+        { "blur-off", 'b', 0, G_OPTION_ARG_NONE, &blur, "Stops the blur from underneath the menu.", NULL  },
         { NULL }
     };
 
