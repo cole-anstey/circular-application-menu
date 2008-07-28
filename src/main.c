@@ -19,7 +19,11 @@
  * See http://code.google.com/p/circular-application-menu/
  */
 #include <gtk/gtk.h>
+#include <gdk/gdkx.h>
 #include <libgnomevfs/gnome-vfs.h>
+
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
 
 #include <glib/gi18n.h>
 #include <string.h>
@@ -31,26 +35,55 @@
 
 static CaFileLeaf* root_fileleaf = NULL;
 
+/**
+ * _ca_circular_application_menu_enable_blur:
+ * @widget: The widget to set the blur against.
+ *
+ * Uses the compiz blur plugin to blur underneath the menus which makes the rendering clearer.
+ **/
+static void
+_ca_circular_application_menu_enable_blur(GtkWidget* window)
+{
+    Display* xdisplay;
+    long data[2];
+
+    /* Blur under the window.  Taken from the blur demo application. */
+    xdisplay = GDK_DISPLAY_XDISPLAY (gdk_display_get_default ());
+
+    data[0] = 9;    /* threshold */
+    data[1] = 0;    /* filter */
+
+    XChangeProperty (
+        xdisplay,
+        GDK_WINDOW_XID (window->window),
+        XInternAtom (xdisplay, "_COMPIZ_WM_WINDOW_BLUR", FALSE),
+        XA_INTEGER,
+        32, PropModeReplace, (guchar *) data,
+        2);
+}
+
 int
 main (int argc, char **argv)
 {
     GtkWidget* window;
+    GdkScreen* screen;
+    GdkColormap* colormap;
     GtkWidget* circular_application_menu;
     GOptionContext* optioncontext;
     GError* error = NULL;
-    GdkScreen* screen;
-    GdkColormap* colormap;
     GMenuTree* tree;
     GMenuTreeDirectory* root;
     gboolean hide_preview;
     gboolean warp_mouse;
     gboolean glyph_size;
+    gboolean blur;
 
     GOptionEntry options[] =
     {
         { "hide-preview", 'h', 0, G_OPTION_ARG_NONE, &hide_preview, "Hides the menu preview displayed when the mouse is over a menu.", NULL  },
         { "warp-mouse-off", 'w', 0, G_OPTION_ARG_NONE, &warp_mouse, "Stops the mouse from warping to the centre of the screen whenever a menu is shown.", NULL  },
         { "glyph-size", 'g', 0, G_OPTION_ARG_INT, &glyph_size, "The size of the glyphs [S: 1=small 2=medium 3=large (default)]. ", "S"  },
+        { "blur-off", 'w', 0, G_OPTION_ARG_NONE, &blur, "Stops the blur from underneath the menu.", NULL  },
         { NULL }
     };
 
@@ -93,6 +126,7 @@ main (int argc, char **argv)
     {
         g_message(_("The circular-main-menu only displays correctly with composited desktops."));
     }
+    screen = gdk_screen_get_default ();
 
     window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
 
@@ -108,9 +142,10 @@ main (int argc, char **argv)
     gtk_widget_set_colormap (window, colormap);
     /*
     Does not seem to be required.
-    gtk_widget_realize (window);
     gdk_window_set_decorations(window->window, 0);
-    */
+    */
+    gtk_widget_realize (window);    /* This is required otherwise gdk_pixmap_new() will assert. */
+
     /* Constructs a new dockband widget. */
     circular_application_menu = ca_circular_application_menu_new (
         hide_preview,
@@ -122,6 +157,13 @@ main (int argc, char **argv)
 
     /* Make the application full screen, without this it will be below any top edged panel. */
     gtk_window_fullscreen(GTK_WINDOW(window));
+
+    /* Check whether blur is enabled. */
+    if (blur)
+    {
+        /* Use the compiz blur plugin to blur underneath the menus which makes the rendering clearer. */
+        _ca_circular_application_menu_enable_blur(window);
+    }
 
     gtk_widget_show_all (window);
 
