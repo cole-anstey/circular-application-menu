@@ -224,7 +224,39 @@ ca_circular_application_menu_new (gboolean hide_preview, gboolean warp_mouse, gi
 CaFileLeaf*
 ca_circular_application_menu(CaCircularApplicationMenu* circular_application_menu, GMenuTreeDirectory* menutreedirectory)
 {
-    return ca_circular_application_menu_show_leaf(circular_application_menu, menutreedirectory, ROOT_LEAF, NULL, FALSE);
+    CaCircularApplicationMenuPrivate* private;
+    CaFileLeaf* fileleaf;
+
+    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+
+    fileleaf = ca_circular_application_menu_show_leaf(circular_application_menu, menutreedirectory, ROOT_LEAF, NULL, FALSE);
+
+    /* Move the mouse pointer to the centre of the screen. */
+    if (FALSE == private->xwarp_mouse_pointer)
+    {
+        /* Move that pointer! */
+        XWarpPointer (
+            GDK_DISPLAY (),
+            None,
+            GDK_ROOT_WINDOW (),
+            0, 0, 0, 0,
+            private->view_width / 2,
+            private->view_height / 2);
+
+        /* Force the highlight to be updated. */
+        GdkEvent* event;
+
+        event = gdk_event_new(GDK_MOTION_NOTIFY);
+        event->motion.is_hint = TRUE;
+        event->motion.x = private->view_width / 2;
+        event->motion.y = private->view_height / 2;
+        event->motion.state = 0;  /*GdkModifierType*/
+
+        _ca_circular_application_menu_motion_notify(GTK_WIDGET(circular_application_menu), (GdkEventMotion*)event);
+        gdk_event_free(event);
+    }
+
+    return fileleaf;
 }
 
 /**
@@ -309,7 +341,7 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
             }
         }
     }
-
+
 	/* Assign the fade tick. */
     private->_fade_timer = gtk_timeout_add(
 		FADE_TIMER_INTERVAL,
@@ -367,7 +399,7 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
 
     return object;
 }
-
+
 /**
  * _ca_circular_application_menu_destroy:
  * @object: a GtkObject pointer to the current widget.
