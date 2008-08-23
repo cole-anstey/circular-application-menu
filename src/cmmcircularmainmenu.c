@@ -68,6 +68,7 @@ static gboolean _ca_circular_application_menu_is_angle_between_angles(gdouble an
 static void _ca_circular_applications_get_segment_angles(CaFileItem* fileitem, gint radius, gdouble* from_angle, gdouble* to_angle);
 static GdkPixbuf* _ca_circular_applications_get_pixbuf_from_name(const char* name, int width, int height);
 static const gchar* _ca_circular_applications_imagefinder_path(const gchar* path);
+static void _ca_circular_applications_update_highlight(CaCircularApplicationMenu* circular_application_menu, int x, int y);
 
 typedef struct _CaCircularApplicationMenuPrivate CaCircularApplicationMenuPrivate;
 
@@ -243,20 +244,34 @@ ca_circular_application_menu(CaCircularApplicationMenu* circular_application_men
             private->view_width / 2,
             private->view_height / 2);
 
-        /* Force the highlight to be updated. */
-        GdkEvent* event;
-
-        event = gdk_event_new(GDK_MOTION_NOTIFY);
-        event->motion.is_hint = TRUE;
-        event->motion.x = private->view_width / 2;
-        event->motion.y = private->view_height / 2;
-        event->motion.state = 0;  /*GdkModifierType*/
-
-        _ca_circular_application_menu_motion_notify(GTK_WIDGET(circular_application_menu), (GdkEventMotion*)event);
-        gdk_event_free(event);
+        /* Update the highlighted item at the given coordinates. */
+        _ca_circular_applications_update_highlight(circular_application_menu, private->view_width / 2, private->view_height / 2);
     }
 
     return fileleaf;
+}
+
+/**
+ * _ca_circular_applications_update_highlight:
+ * @circular_application_menu: A CaCircularApplicationMenu pointer to the circular-application-menu widget instance.
+ * @x: a guint value that denotes the x coordinate.
+ * @y: a guint value that denotes the y coordinate.
+ *
+ * Updates the highlighted item at the given coordinates.
+ **/
+static void 
+_ca_circular_applications_update_highlight(CaCircularApplicationMenu* circular_application_menu, int x, int y)
+{
+    GdkEvent* event;
+
+    event = gdk_event_new(GDK_MOTION_NOTIFY);
+    event->motion.is_hint = TRUE;
+    event->motion.x = x;
+    event->motion.y = y;
+    event->motion.state = 0;  /*GdkModifierType*/
+
+    _ca_circular_application_menu_motion_notify(GTK_WIDGET(circular_application_menu), (GdkEventMotion*)event);
+    gdk_event_free(event);
 }
 
 /**
@@ -814,7 +829,7 @@ _ca_circular_application_menu_key_release(GtkWidget* widget, GdkEventKey* event)
 	/* Check whether a new file-leaf should be positioned. */
     if (position_fileleaf != NULL)
     {
-        /* Position view at the tabebd file-leaf. */
+        /* Position view at the tabbed file-leaf. */
 
         g_tabbed_fileleaf = position_fileleaf;
 
@@ -998,22 +1013,34 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
     /* Check for a right click. */
     if (event->button == 3) /* None=0, Left=1, Middle=2, Right=3 */
     {
-        /* Position view at mouse. */
+        /* Position current show menu at mouse. */
 
-        _ca_circular_application_menu_view_centre_fileleaf(
-            circular_application_menu,
-            fileleaf,
-            SCREEN_2_OFFSET((gint)event->x, private->view_x_offset),
-            SCREEN_2_OFFSET((gint)event->y, private->view_y_offset));
-
-        /* Invalidate the widget. */
-        gtk_widget_queue_draw(widget);
-
-        /* Handle any pending events. */
-        while (gtk_events_pending())
+        if (g_tabbed_fileleaf != NULL)
         {
-            /* Process all events currently in the queue. */
-            gtk_main_iteration();
+            gint x;
+            gint y;
+
+            x = g_tabbed_fileleaf->x + ((private->view_width / 2) - event->x);
+            y = g_tabbed_fileleaf->y + ((private->view_height / 2) - event->y);
+
+            _ca_circular_application_menu_view_centre_fileleaf(
+                circular_application_menu,
+                g_tabbed_fileleaf,
+                x,
+                y);
+
+            /* Update the highlighted item at the given coordinates. */
+            _ca_circular_applications_update_highlight(circular_application_menu, event->x, event->y);
+
+            /* Invalidate the widget. */
+            gtk_widget_queue_draw(widget);
+
+            /* Handle any pending events. */
+            while (gtk_events_pending())
+            {
+                /* Process all events currently in the queue. */
+                gtk_main_iteration();
+            }
         }
 
         return FALSE;
