@@ -85,7 +85,7 @@ main (int argc, char **argv)
         { "warp-mouse-off", 'w', 0, G_OPTION_ARG_NONE, &warp_mouse, "Stops the mouse from warping to the centre of the screen whenever a menu is shown.", NULL  },
         { "glyph-size", 'g', 0, G_OPTION_ARG_INT, &glyph_size, "The size of the glyphs [S: 1=small 2=medium 3=large (default)]. ", "S"  },
         { "blur-off", 'b', 0, G_OPTION_ARG_NONE, &blur, "Stops the blur from underneath the menu.", NULL  },
-        { "emblem", 'e', 0, G_OPTION_ARG_STRING, &emblem, "Specifies the root menu emblem.", NULL  },
+        { "emblem", 'e', 0, G_OPTION_ARG_STRING, &emblem, "Specifies the (colon separated) emblems to use for the root menu [E: ./pixmaps/ubuntu-emblem-normal.png:./pixmaps/ubuntu-emblem-prelight.png].", NULL  },
         { NULL }
     };
 
