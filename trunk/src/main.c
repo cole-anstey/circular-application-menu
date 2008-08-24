@@ -77,6 +77,7 @@ main (int argc, char **argv)
     gboolean warp_mouse;
     gboolean glyph_size;
     gboolean blur;
+    gchar* emblem;
 
     GOptionEntry options[] =
     {
@@ -84,6 +85,7 @@ main (int argc, char **argv)
         { "warp-mouse-off", 'w', 0, G_OPTION_ARG_NONE, &warp_mouse, "Stops the mouse from warping to the centre of the screen whenever a menu is shown.", NULL  },
         { "glyph-size", 'g', 0, G_OPTION_ARG_INT, &glyph_size, "The size of the glyphs [S: 1=small 2=medium 3=large (default)]. ", "S"  },
         { "blur-off", 'b', 0, G_OPTION_ARG_NONE, &blur, "Stops the blur from underneath the menu.", NULL  },
+        { "emblem", 'e', 0, G_OPTION_ARG_STRING, &emblem, "Specifies the root menu emblem.", NULL  },
         { NULL }
     };
 
@@ -150,7 +152,8 @@ main (int argc, char **argv)
     circular_application_menu = ca_circular_application_menu_new (
         hide_preview,
         warp_mouse,
-        glyph_size);
+        glyph_size,
+        emblem);
     gtk_container_add (GTK_CONTAINER (window), circular_application_menu);
 
     g_signal_connect (window, "destroy", G_CALLBACK (gtk_main_quit), NULL);

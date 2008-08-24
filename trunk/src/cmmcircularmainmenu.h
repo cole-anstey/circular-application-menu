@@ -210,7 +210,7 @@ struct _CaFileLeaf
 };
 
 /* Construction */
-GtkWidget* ca_circular_application_menu_new (gboolean hide_preview, gboolean warp_mouse, gint glyph_size);
+GtkWidget* ca_circular_application_menu_new (gboolean hide_preview, gboolean warp_mouse, gint glyph_size, gchar* emblem);
 GType ca_circular_application_menu_get_type(void);
 
 /* Implementation */
