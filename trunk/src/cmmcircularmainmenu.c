@@ -70,6 +70,7 @@ static GdkPixbuf* _ca_circular_applications_menu_get_pixbuf_from_name(const char
 static const gchar* _ca_circular_applications_menu_imagefinder_path(const gchar* path);
 static void _ca_circular_applications_menu_update_highlight(CaCircularApplicationMenu* circular_application_menu, gint x, gint y);
 static gint _ca_circular_applications_menu_get_centre_iconsize(CaCircularApplicationMenu* circular_application_menu, CaFileLeaf* fileleaf);
+static void _ca_circular_applications_menu_update_emblem(CaCircularApplicationMenu* circular_application_menu, gchar* emblems);
 
 typedef struct _CaCircularApplicationMenuPrivate CaCircularApplicationMenuPrivate;
 
@@ -261,6 +262,51 @@ ca_circular_application_menu(CaCircularApplicationMenu* circular_application_men
 }
 
 /**
+ * _ca_circular_applications_menu_update_emblem:
+ * @circular_application_menu: A CaCircularApplicationMenu pointer to the circular-application-menu widget instance.
+ * @x: a guint value that denotes the x coordinate.
+ * @y: a guint value that denotes the y coordinate.
+ *
+ * Updates the root menu emblem.
+ **/
+static void 
+_ca_circular_applications_menu_update_emblem(CaCircularApplicationMenu* circular_application_menu, gchar* emblems)
+{
+    CaCircularApplicationMenuPrivate* private;
+
+    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+
+    /* Split the two emblems and create the associated pixbufs. */
+    if (emblems != NULL)
+    {
+        gchar* result = NULL;;
+        char delims[] = ":";
+
+        result = strtok((gchar*)emblems, delims);
+
+        /* Normal emblem. */
+        if (result != NULL)
+        {
+            private->emblem_normal = gdk_pixbuf_new_from_file(result, NULL);
+
+            /* Prelight emblem. */
+            result = strtok(NULL, delims);
+
+            if (result != NULL)
+            {
+                private->emblem_prelight = gdk_pixbuf_new_from_file(result, NULL);
+            }
+        }
+
+        if ((private->emblem_normal == NULL) ||
+            (private->emblem_prelight == NULL))
+        {
+            g_message("The emblems could not be loaded, are the paths correct?");
+        }
+    }
+}
+
+/**
  * _ca_circular_applications_menu_update_highlight:
  * @circular_application_menu: A CaCircularApplicationMenu pointer to the circular-application-menu widget instance.
  * @x: a guint value that denotes the x coordinate.
@@ -323,6 +369,7 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
 
     private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(object);
 
+    private->emblems = NULL;
     private->emblem_normal = NULL;
     private->emblem_prelight = NULL;
 
@@ -368,36 +415,22 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
             }
             case PROP_EMBLEM:
             {
-                private->emblems = g_value_get_string (construct_params[param].value);
+                gchar* emblems;
 
-                /* Split the two emblems and create the associated pixbufs. */
-                if (private->emblems != NULL)
+                emblems = (gchar*)g_malloc0(sizeof(gchar) * 255);
+
+                strcpy(emblems, g_value_get_string (construct_params[param].value));
+
+                /* Assign the default emblem if none has been specified. */
+                if (strlen(emblems) == 0)
                 {
-                    gchar* result = NULL;;
-                    char delims[] = ":";
-
-                    result = strtok((gchar*)private->emblems, delims);
-
-                    /* Normal emblem. */
-                    if (result != NULL)
-                    {
-                        private->emblem_normal = gdk_pixbuf_new_from_file(result, NULL);
-
-                        /* Prelight emblem. */
-                        result = strtok(NULL, delims);
-
-                        if (result != NULL)
-                        {
-                            private->emblem_prelight = gdk_pixbuf_new_from_file(result, NULL);
-                        }
-                    }
-
-                    if ((private->emblem_normal == NULL) ||
-                        (private->emblem_prelight == NULL))
-                    {
-                        g_message("The emblems could not be loaded, are the paths correct?");
-                    }
+                    strcpy(emblems, "./pixmaps/gnome-emblem-normal.png:./pixmaps/gnome-emblem-prelight.png");
                 }
+
+                /* Update the root menu emblem. */
+                _ca_circular_applications_menu_update_emblem(CA_CIRCULAR_APPLICATION_MENU(object), emblems);
+
+                g_free((gpointer)emblems);
 
                 break;
             }
@@ -628,7 +661,7 @@ _ca_circular_application_menu_class_init (CaCircularApplicationMenuClass* klass)
             "emblem",
             "Emblem",
             "Emblem.",
-            NULL,
+            "", /* Assigning a default value does not appear to work? */
             G_PARAM_WRITABLE|G_PARAM_CONSTRUCT_ONLY));
 
     /* Install the widgets private struture. */
