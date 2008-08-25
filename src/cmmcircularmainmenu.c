@@ -2224,7 +2224,7 @@ _ca_circular_application_menu_render_fileleaf(
                         /* Check whether the item is selected. */
                         if (fileitem == g_current_fileitem)
                         {
-                            pixbuf = gdk_pixbuf_new_from_inline (-1, open_sub_menu_normal, FALSE, NULL);
+                            pixbuf = gdk_pixbuf_new_from_inline (-1, open_sub_menu_prelight, FALSE, NULL);
                         }
                         else
                         {
