@@ -164,8 +164,7 @@ struct _CaSegmentRender
     gint arrow_point_y;
     gint arrow_side_x;
     gint arrow_side_y;
-    gint outer_arrow_radius;
-    gint inner_arrow_radius;
+    gint arrow_radius;
     gdouble arrow_angle;
 };
 
