@@ -31,6 +31,8 @@
 
 #include "../pixmaps/close-menu-prelight.h"
 #include "../pixmaps/close-menu-normal.h"
+#include "../pixmaps/open-sub-menu-prelight.h"
+#include "../pixmaps/open-sub-menu-normal.h"
 
 /* Base functions. */
 static void _ca_circular_application_menu_class_init (CaCircularApplicationMenuClass* klass);
@@ -91,7 +93,6 @@ struct _CaCircularApplicationMenuPrivate
     gboolean hide_preview;		/* */
     gboolean xwarp_mouse_pointer;
     gint glyph_size;
-    const gchar* emblems;
     GdkPixbuf* emblem_normal;
     GdkPixbuf* emblem_prelight;
 };
@@ -144,7 +145,7 @@ RGBA g_text_rgba                = { 1.0, 1.0, 1.0, 0.0, 1.0, 0.0 };
 #define RADIUS_SPACER                   4.0
 #define CENTRE_ICONSIZE                 24.0
 #define SEGMENT_ARROW_WIDTH             6.0     /* The width of an arrow. */
-#define SEGMENT_ARROW_HEIGHT            4.0     /* The height of an arrow. */
+#define SEGMENT_ARROW_HEIGHT            16.0    /* The height of an arrow. */
 #define SEGMENT_CIRCLE_RADIUS           3.0     /* The bevel of a fileitem segment. */
 #define CIRCULAR_SEPERATOR              4.0
 #define SPOKE_SEPERATOR                 RADIUS_SPACER
@@ -370,7 +371,6 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
 
     private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(object);
 
-    private->emblems = NULL;
     private->emblem_normal = NULL;
     private->emblem_prelight = NULL;
 
@@ -723,6 +723,13 @@ _ca_circular_application_menu_expose (GtkWidget* widget, GdkEventExpose* event)
     cairo_set_operator (cr, CAIRO_OPERATOR_CLEAR);
     cairo_paint (cr);
     cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
+
+    /* VM - Non transparent debug. */
+    /*
+    cairo_rectangle (cr, 0, 0, widget->allocation.width, widget->allocation.height);
+    cairo_set_source_rgba (cr, 0.8, 0.8, 0.8, 1.0);
+    cairo_fill (cr);
+    */
 
     /* Draw a gradient circle. */
     /* FIXME: Bit slow this and not working quite right.  Turn off for now.
@@ -2107,7 +2114,7 @@ _ca_circular_application_menu_render_fileleaf(
     }
     else
     {
-        /* Nultiple file-items. */
+        /* Multiple file-items. */
 
         /* Iterate the file-leaf file-item's. */
         file_list = g_list_first(fileleaf->_fileitem_list);
@@ -2135,38 +2142,17 @@ _ca_circular_application_menu_render_fileleaf(
                         if (GLYPH_FILE_MENU == fileitem->_type)
                         {
                             /* Add an arrow. */
-                            gdouble arrow_percentage;
-
-                            fileitem->_segment_render->outer_arrow_radius =
-                            	(gint)((fileitem->_parent_radius +
-                            	SEGMENT_OUTER_SPACER(private->normal_iconsize)) -
-                            	(SEGMENT_ARROW_HEIGHT / 2));
+                            fileitem->_segment_render->arrow_radius =
+                            	(gint)((fileitem->_parent_radius + SEGMENT_OUTER_SPACER(private->normal_iconsize)) -
+                            	SEGMENT_ARROW_HEIGHT);
 
                             _ca_get_point_from_source_offset(
                                 fileleaf->_central_glyph->x,
                                 fileleaf->_central_glyph->y,
                                 fileitem->_parent_angle,
-                                fileitem->_segment_render->outer_arrow_radius,
+                                fileitem->_segment_render->arrow_radius,
                                 &fileitem->_segment_render->arrow_point_x,
                                 &fileitem->_segment_render->arrow_point_y);
-
-                            fileitem->_segment_render->inner_arrow_radius =
-                            	fileitem->_segment_render->outer_arrow_radius - (gint)SEGMENT_ARROW_HEIGHT;
-
-                            /* Smaller the circumference then larger the angle. */
-                            arrow_percentage = SEGMENT_ARROW_WIDTH / _ca_circular_application_menu_circumference_from_radius(
-								fileitem->_segment_render->inner_arrow_radius);
-                            fileitem->_segment_render->arrow_angle = (360.0 * arrow_percentage);
-
-                            _ca_get_point_from_source_offset(
-                                fileleaf->_central_glyph->x,
-                                fileleaf->_central_glyph->y,
-                                _ca_circular_application_menu_calculate_angle_offset(
-									fileitem->_parent_angle,
-									(fileitem->_segment_render->arrow_angle / 2)),
-                                fileitem->_segment_render->inner_arrow_radius,
-                                &fileitem->_segment_render->arrow_side_x,
-                                &fileitem->_segment_render->arrow_side_y);
                         }
                     }
 
@@ -2184,35 +2170,6 @@ _ca_circular_application_menu_render_fileleaf(
                         fileitem->_parent_radius - SEGMENT_INNER_SPACER(private->normal_iconsize),
                         DEGREE_2_RADIAN(0.0),
                         DEGREE_2_RADIAN(360.0));
-
-                    if (GLYPH_FILE_MENU == fileitem->_type)
-                    {
-                        /* Add an arrow. */
-                        cairo_new_sub_path (cr);
-
-                        cairo_move_to(
-                            cr,
-                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_point_x, private->view_x_offset),
-                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_point_y, private->view_y_offset));
-
-                        cairo_line_to(
-                            cr,
-                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_side_x, private->view_x_offset),
-                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_side_y, private->view_y_offset));
-
-                        cairo_arc_negative(cr,
-                            OFFSET_2_SCREEN(fileleaf->_central_glyph->x, private->view_x_offset),
-                            OFFSET_2_SCREEN(fileleaf->_central_glyph->y, private->view_y_offset),
-                            fileitem->_segment_render->inner_arrow_radius,
-                            DEGREE_2_RADIAN(_ca_circular_application_menu_calculate_angle_offset(
-								fileitem->_parent_angle,
-								(fileitem->_segment_render->arrow_angle / 2))),
-                            DEGREE_2_RADIAN(_ca_circular_application_menu_calculate_angle_offset(
-								fileitem->_parent_angle,
-								-(fileitem->_segment_render->arrow_angle / 2))));
-
-                        cairo_close_path(cr);
-                    }
 
                     /* Check whether the item is selected. */
                     if (fileitem == g_current_fileitem)
@@ -2256,6 +2213,34 @@ _ca_circular_application_menu_render_fileleaf(
 							g_normal_segment_rgba._b,
 							g_normal_segment_rgba._a_pen);
                         cairo_stroke (cr);
+                    }
+
+                    if (GLYPH_FILE_MENU == fileitem->_type)
+                    {
+                        /* Add an arrow. */
+
+                        GdkPixbuf* pixbuf;
+
+                        /* Check whether the item is selected. */
+                        if (fileitem == g_current_fileitem)
+                        {
+                            pixbuf = gdk_pixbuf_new_from_inline (-1, open_sub_menu_normal, FALSE, NULL);
+                        }
+                        else
+                        {
+                            pixbuf = gdk_pixbuf_new_from_inline (-1, open_sub_menu_normal, FALSE, NULL);
+                        }
+
+                        gdk_cairo_set_source_pixbuf (
+                            cr,
+                            pixbuf,
+                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_point_x, private->view_x_offset) - (SEGMENT_ARROW_HEIGHT / 2),
+                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_point_y, private->view_y_offset) - (SEGMENT_ARROW_HEIGHT / 2));
+                        cairo_paint_with_alpha(cr, 1.0);
+
+                        g_assert(pixbuf != NULL);
+
+                        g_object_unref(pixbuf);
                     }
                 }
                 else
@@ -2336,32 +2321,17 @@ _ca_circular_application_menu_render_fileleaf(
                         if (GLYPH_FILE_MENU == fileitem->_type)
                         {
                             /* Add an arrow. */
-                            gdouble arrow_percentage;
-
-                            fileitem->_segment_render->outer_arrow_radius =
-                            	(gint)((fileitem->_parent_radius + SEGMENT_OUTER_SPACER(private->normal_iconsize)) - (SEGMENT_ARROW_HEIGHT / 2));
+                            fileitem->_segment_render->arrow_radius =
+                            	(gint)((fileitem->_parent_radius + SEGMENT_OUTER_SPACER(private->normal_iconsize)) - 
+                                SEGMENT_ARROW_HEIGHT);
 
                             _ca_get_point_from_source_offset(
                                 fileleaf->_central_glyph->x,
                                 fileleaf->_central_glyph->y,
                                 fileitem->_parent_angle,
-                                fileitem->_segment_render->outer_arrow_radius,
+                                fileitem->_segment_render->arrow_radius,
                                 &fileitem->_segment_render->arrow_point_x,
                                 &fileitem->_segment_render->arrow_point_y);
-
-                            fileitem->_segment_render->inner_arrow_radius = fileitem->_segment_render->outer_arrow_radius - (gint)SEGMENT_ARROW_HEIGHT;
-
-                            /* Smaller the circumference then larger the angle. */
-                            arrow_percentage = SEGMENT_ARROW_WIDTH / _ca_circular_application_menu_circumference_from_radius(fileitem->_segment_render->inner_arrow_radius);
-                            fileitem->_segment_render->arrow_angle = (360.0 * arrow_percentage);
-
-                            _ca_get_point_from_source_offset(
-                                fileleaf->_central_glyph->x,
-                                fileleaf->_central_glyph->y,
-                                _ca_circular_application_menu_calculate_angle_offset(fileitem->_parent_angle, (fileitem->_segment_render->arrow_angle / 2)),
-                                fileitem->_segment_render->inner_arrow_radius,
-                                &fileitem->_segment_render->arrow_side_x,
-                                &fileitem->_segment_render->arrow_side_y);
                         }
                     }
 
@@ -2413,31 +2383,6 @@ _ca_circular_application_menu_render_fileleaf(
                         DEGREE_2_RADIAN(fileitem->_segment_render->Ato_angle),
                         DEGREE_2_RADIAN(fileitem->_segment_render->Afrom_angle));
 
-                    if (GLYPH_FILE_MENU == fileitem->_type)
-                    {
-                        /* Add an arrow. */
-                        cairo_new_sub_path (cr);
-
-                        cairo_move_to(
-                            cr,
-                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_point_x, private->view_x_offset),
-                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_point_y, private->view_y_offset));
-
-                        cairo_line_to(
-                            cr,
-                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_side_x, private->view_x_offset),
-                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_side_y, private->view_y_offset));
-
-                        cairo_arc_negative(cr,
-                            OFFSET_2_SCREEN(fileleaf->_central_glyph->x, private->view_x_offset),
-                            OFFSET_2_SCREEN(fileleaf->_central_glyph->y, private->view_y_offset),
-                            fileitem->_segment_render->inner_arrow_radius,
-                            DEGREE_2_RADIAN(_ca_circular_application_menu_calculate_angle_offset(fileitem->_parent_angle, (fileitem->_segment_render->arrow_angle / 2))),
-                            DEGREE_2_RADIAN(_ca_circular_application_menu_calculate_angle_offset(fileitem->_parent_angle, -(fileitem->_segment_render->arrow_angle / 2))));
-
-                        cairo_close_path(cr);
-                    }
-
                     /* Check whether the item is selected. */
                     if (fileitem == g_current_fileitem)
                     {
@@ -2460,6 +2405,34 @@ _ca_circular_application_menu_render_fileleaf(
                         cairo_fill_preserve (cr);
                         cairo_set_source_rgba (cr, g_normal_segment_rgba._r, g_normal_segment_rgba._g, g_normal_segment_rgba._b, g_normal_segment_rgba._a_pen);
                         cairo_stroke (cr);
+                    }
+
+                    if (GLYPH_FILE_MENU == fileitem->_type)
+                    {
+                        /* Add an arrow. */
+
+                        GdkPixbuf* pixbuf;
+
+                        /* Check whether the item is selected. */
+                        if (fileitem == g_current_fileitem)
+                        {
+                            pixbuf = gdk_pixbuf_new_from_inline (-1, open_sub_menu_prelight, FALSE, NULL);
+                        }
+                        else
+                        {
+                            pixbuf = gdk_pixbuf_new_from_inline (-1, open_sub_menu_normal, FALSE, NULL);
+                        }
+
+                        gdk_cairo_set_source_pixbuf (
+                            cr,
+                            pixbuf,
+                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_point_x, private->view_x_offset) - (SEGMENT_ARROW_HEIGHT / 2),
+                            OFFSET_2_SCREEN(fileitem->_segment_render->arrow_point_y, private->view_y_offset) - (SEGMENT_ARROW_HEIGHT / 2));
+                        cairo_paint_with_alpha(cr, 1.0);
+
+                        g_assert(pixbuf != NULL);
+
+                        g_object_unref(pixbuf);
                     }
                 }
             }
