@@ -139,6 +139,7 @@ RGBA g_text_rgba                = { 1.0, 1.0, 1.0, 0.0, 1.0, 0.0 };
 /* Constants. */
 #define FADE_TIMER_INTERVAL        		15		/* The interval used for fading the menus. */
 #define FADE_PERCENTAGE_INCREMENT       5		/* The percentage increment when fading. */
+#define OVERLAP_TRANSLUCENCY            0.75    /* The translucency for overlapped parent menus. */
 #define TEXT_BOUNDARY                   1.0     /* The boundary surrounding the text. */
 #define RADIUS_SPACER                   4.0
 #define CENTRE_ICONSIZE                 24.0
@@ -1655,19 +1656,27 @@ _ca_circular_application_menu_render_fileleaf(
             cr,
             OFFSET_2_SCREEN(fileleaf->x, private->view_x_offset),
             OFFSET_2_SCREEN(fileleaf->y, private->view_y_offset),
-            fileleaf->radius,
+            fileleaf->radius + RADIUS_SPACER,
             0,
             DEGREE_2_RADIAN(360));
 
-        cairo_new_sub_path (cr);
+        /* Make any overlapped portions of a parent menu appear more translucent. */
+        cairo_set_operator (cr, CAIRO_OPERATOR_CLEAR);
+        cairo_save(cr);
+        cairo_clip_preserve(cr);
+        cairo_paint_with_alpha (cr, OVERLAP_TRANSLUCENCY);
+        cairo_restore(cr);
+        cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
 
         cairo_arc (
             cr,
             OFFSET_2_SCREEN(fileleaf->x, private->view_x_offset),
             OFFSET_2_SCREEN(fileleaf->y, private->view_y_offset),
-            fileleaf->radius + RADIUS_SPACER,
+            fileleaf->radius,
             0,
             DEGREE_2_RADIAN(360));
+
+        cairo_new_sub_path (cr);
 
         /* Render to the cairo context. */
         cairo_set_line_width (cr, g_outer_inner_rgba._line_width);
@@ -1703,6 +1712,8 @@ _ca_circular_application_menu_render_fileleaf(
         cairo_fill_preserve (cr);
         cairo_set_source_rgba (cr, g_outer_inner_rgba._r, g_outer_inner_rgba._g, g_outer_inner_rgba._b, g_outer_inner_rgba._a_pen);
         cairo_stroke (cr);
+
+        /* The root menu won't have any overlapped parent menus. */
     }
     else
     {
@@ -1883,6 +1894,15 @@ _ca_circular_application_menu_render_fileleaf(
             DEGREE_2_RADIAN(fileleaf->_menu_render->Fcircle_lowest_angle));
 
         cairo_close_path(cr);
+
+        /* Make any overlapped portions of a parent menu appear more translucent. */
+        cairo_set_operator (cr, CAIRO_OPERATOR_CLEAR);
+        cairo_save(cr);
+        cairo_clip_preserve(cr);
+        cairo_paint_with_alpha (cr, OVERLAP_TRANSLUCENCY);
+        cairo_restore(cr);
+        cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
+
         cairo_new_sub_path (cr);
 
         cairo_arc (
