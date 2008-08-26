@@ -73,6 +73,7 @@ static const gchar* _ca_circular_applications_menu_imagefinder_path(const gchar*
 static void _ca_circular_applications_menu_update_highlight(CaCircularApplicationMenu* circular_application_menu, gint x, gint y);
 static gint _ca_circular_applications_menu_get_centre_iconsize(CaCircularApplicationMenu* circular_application_menu, CaFileLeaf* fileleaf);
 static void _ca_circular_applications_menu_update_emblem(CaCircularApplicationMenu* circular_application_menu, gchar* emblems);
+static void _ca_circular_application_menu_render_reflection(CaCircularApplicationMenu* circular_application_menu, cairo_t* cr);
 
 typedef struct _CaCircularApplicationMenuPrivate CaCircularApplicationMenuPrivate;
 
@@ -88,10 +89,12 @@ struct _CaCircularApplicationMenuPrivate
 	gint normal_iconsize;
 	gint tab_width;
 	gint tab_height;
+    GdkPixbuf* light_pixbuf;
 
     /*< Options >*/
-    gboolean hide_preview;		/* */
+    gboolean hide_preview;
     gboolean xwarp_mouse_pointer;
+    gboolean render_reflection;
     gint glyph_size;
     GdkPixbuf* emblem_normal;
     GdkPixbuf* emblem_prelight;
@@ -130,12 +133,16 @@ struct _RGBA
     gdouble _line_width;
 };
 
-/* Defines the colours etc.         R    G    B    Ap   Al   lw   */
-RGBA g_normal_segment_rgba      = { 0.0, 0.0, 0.0, 0.8, 0.6, 0.0 };
-RGBA g_prelight_segment_rgba    = { 0.0, 0.0, 0.0, 1.0, 0.8, 0.0 };
-RGBA g_outer_inner_rgba         = { 0.0, 0.0, 0.0, 1.0, 0.6, 0.5 };
-RGBA g_text_box_rgba            = { 0.0, 0.0, 0.0, 1.0, 0.8, 0.0 };
-RGBA g_text_rgba                = { 1.0, 1.0, 1.0, 0.0, 1.0, 0.0 };
+#define CRGB(x)                 (x / 255.0)
+
+/* Defines the colours etc.         Red        Green      Blue       Apen   Aline   lwidth   */
+RGBA g_normal_segment_rgba      = { CRGB(205), CRGB(233), CRGB(241), 0.8,   0.6,    0.0 };
+RGBA g_prelight_segment_rgba    = { CRGB(205), CRGB(233), CRGB(241), 1.0,   0.9,    0.0 };
+RGBA g_outer_inner_rgba         = { CRGB(205), CRGB(233), CRGB(241), 1.0,   0.6,    1.0 };
+RGBA g_outer1_rgba              = { CRGB(0),   CRGB(0),   CRGB(0),   1.0,   0.0,    0.0 };  /* Aline + lwidth unused. */
+RGBA g_outer2_rgba              = { CRGB(255), CRGB(255), CRGB(255), 1.0,   0.0,    0.0 };  /* Aline + lwidth unused. */
+RGBA g_text_box_rgba            = { CRGB(0),   CRGB(0),   CRGB(0),   0.0,   0.8,    0.0 };
+RGBA g_text_rgba                = { CRGB(255), CRGB(255), CRGB(255), 0.0,   1.0,    0.0 };
 
 /* Constants. */
 #define FADE_TIMER_INTERVAL        		15		/* The interval used for fading the menus. */
@@ -186,6 +193,7 @@ enum
     PROP_WARP_MOUSE,
     PROP_GLYPH_SIZE,
     PROP_EMBLEM,
+    PROP_RENDER_REFLECTION,
 };
 
 static CaFileLeaf* g_root_fileleaf = NULL;
@@ -202,13 +210,14 @@ static CaFileLeaf* g_disassociated_fileleaf = NULL;
  * @warp_mouse: A boolean that specifies whether the mouse should be 'warped' to the screen centre whenever a submenu is displayed.
  * @glyph_size: An integer that specifes the default glyph size.
  * @emblem: A gchar pointer to the root menu emblem to use.
+ * @render_reflection: A boolean that specifies whether the reflection should be rendered.
  *
  * Constructs a new dockband widget.
  *
  * Returns: a GtkWidget pointer to the newly constructed widget.
  **/
 GtkWidget *
-ca_circular_application_menu_new (gboolean hide_preview, gboolean warp_mouse, gint glyph_size, gchar* emblem)
+ca_circular_application_menu_new (gboolean hide_preview, gboolean warp_mouse, gint glyph_size, gchar* emblem, gboolean render_reflection)
 {
     GObject* object;
 
@@ -220,6 +229,7 @@ ca_circular_application_menu_new (gboolean hide_preview, gboolean warp_mouse, gi
         "warp-mouse", warp_mouse,
         "glyph-size", glyph_size,
         "emblem", emblem,
+        "render-reflection", render_reflection,
         NULL);
 
     return GTK_WIDGET(object);
@@ -435,6 +445,12 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
 
                 break;
             }
+            case PROP_RENDER_REFLECTION:
+            {
+                private->render_reflection = g_value_get_boolean (construct_params[param].value);
+
+                break;
+            }
         }
     }
 
@@ -491,6 +507,11 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
 		private->tab_height =
 			((RADIUS_ICON_SPACER + private->normal_iconsize + RADIUS_ICON_SPACER) -
 			(RADIUS_SPACER + CLOSEST_TAB_CIRCLE_RADIUS + FARTHEST_TAB_CIRCLE_RADIUS));
+
+        /* Load the light reflection pixbuf. */
+        //private->light_pixbuf = gdk_pixbuf_new_from_inline (-1, close_menu_prelight, FALSE, NULL);
+        private->light_pixbuf = gdk_pixbuf_new_from_file("/home/collie/code/circular-application-menu/pixmaps/light.png", NULL);
+        g_assert(private->light_pixbuf != NULL);
     }
 
     return object;
@@ -524,6 +545,12 @@ _ca_circular_application_menu_destroy(GtkObject* object)
     {
         g_object_unref(private->emblem_prelight);
         private->emblem_prelight = NULL;
+    }
+
+    if (private->light_pixbuf != NULL)
+    {
+        g_object_unref(private->light_pixbuf);
+        private->light_pixbuf = NULL;
     }
 
     /* Call base functionality. */
@@ -665,6 +692,16 @@ _ca_circular_application_menu_class_init (CaCircularApplicationMenuClass* klass)
             "", /* Assigning a default value does not appear to work? */
             G_PARAM_WRITABLE|G_PARAM_CONSTRUCT_ONLY));
 
+    g_object_class_install_property (
+        gobject_class,
+        PROP_RENDER_REFLECTION,
+        g_param_spec_boolean (
+            "render-reflection",
+            "Render Reflection",
+            "Render Reflection.",
+            FALSE,
+            G_PARAM_WRITABLE|G_PARAM_CONSTRUCT_ONLY));
+
     /* Install the widgets private struture. */
     g_type_class_add_private (klass, sizeof (CaCircularApplicationMenuPrivate));
 }
@@ -725,11 +762,11 @@ _ca_circular_application_menu_expose (GtkWidget* widget, GdkEventExpose* event)
     cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
 
     /* VM - Non transparent debug. */
-    /*
+    
     cairo_rectangle (cr, 0, 0, widget->allocation.width, widget->allocation.height);
     cairo_set_source_rgba (cr, 0.8, 0.8, 0.8, 1.0);
     cairo_fill (cr);
-    */
+    
 
     /* Draw a gradient circle. */
     /* FIXME: Bit slow this and not working quite right.  Turn off for now.
@@ -1636,6 +1673,57 @@ _ca_circular_application_menu_render(CaCircularApplicationMenu* circular_applica
 }
 
 /**
+ * _ca_circular_application_menu_render_reflection:
+ * @circular_application_menu: A CaCircularApplicationMenu pointer to the circular-application-menu widget instance.
+ * @cr: A cairo-context to render to.
+ *
+ * Renders the reflection alpha to the cairo context.
+ */
+static void
+_ca_circular_application_menu_render_reflection(CaCircularApplicationMenu* circular_application_menu, cairo_t* cr)
+{
+    CaCircularApplicationMenuPrivate* private;
+    double x1;
+    double y1;
+    double x2;
+    double y2;
+    gint offset_x_start;
+    gint offset_y_start;
+    gint x;
+    gint y;
+    gint width;
+    gint height;
+
+    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+
+    cairo_fill_extents(cr, &x1, &y1, &x2, &y2);
+
+    width = 1472;//gdk_pixbuf_get_width(private->light_pixbuf);
+    height = 50;//gdk_pixbuf_get_height(private->light_pixbuf);
+
+    /* Offset the image. */
+    offset_x_start = ((gint)y1 / height) * 31;
+    offset_y_start = ((gint)y1 % height);
+
+    cairo_set_operator (cr, CAIRO_OPERATOR_ADD);
+    cairo_save(cr);
+    cairo_clip_preserve(cr);
+
+    x = offset_x_start;
+
+    for(y = (y1 - offset_y_start); y < y2; y += height)
+    {
+        gdk_cairo_set_source_pixbuf (cr, private->light_pixbuf, x, y);
+        cairo_paint_with_alpha(cr, 1.0);
+
+        x += 31;
+    }
+
+    cairo_restore(cr);
+    cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
+}
+
+/**
  * _ca_circular_application_menu_render_fileleaf:
  * @circular_application_menu: A CaCircularApplicationMenu pointer to the circular-application-menu widget instance.
  * @fileleaf: A file-leaf to render.
@@ -1658,6 +1746,8 @@ _ca_circular_application_menu_render_fileleaf(
     /* Render the fileleaf. */
     if (fileleaf == g_disassociated_fileleaf)
     {
+        cairo_path_t* path;
+
         /* Render the disassociated menu outer. */
         cairo_arc (
             cr,
@@ -1666,6 +1756,8 @@ _ca_circular_application_menu_render_fileleaf(
             fileleaf->radius + RADIUS_SPACER,
             0,
             DEGREE_2_RADIAN(360));
+
+        path = cairo_copy_path(cr);
 
         /* Make any overlapped portions of a parent menu appear more translucent. */
         cairo_set_operator (cr, CAIRO_OPERATOR_CLEAR);
@@ -1686,14 +1778,36 @@ _ca_circular_application_menu_render_fileleaf(
         cairo_new_sub_path (cr);
 
         /* Render to the cairo context. */
-        cairo_set_line_width (cr, g_outer_inner_rgba._line_width);
         cairo_set_source_rgba (cr, g_outer_inner_rgba._r, g_outer_inner_rgba._g, g_outer_inner_rgba._b, g_outer_inner_rgba._a_fill);
         cairo_fill_preserve (cr);
-        cairo_set_source_rgba (cr, g_outer_inner_rgba._r, g_outer_inner_rgba._g, g_outer_inner_rgba._b, g_outer_inner_rgba._a_pen);
+
+        /* Render reflections. */
+        if (FALSE == private->render_reflection)
+        {
+            _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
+        }
+
+        cairo_new_path(cr);
+        cairo_append_path(cr, path);
+
+        /* Outline with a lighter colour. */
+        cairo_clip_preserve(cr);
+        cairo_set_line_width (cr, g_outer_inner_rgba._line_width * 3 /*Overlap from edge*/);
+        cairo_set_source_rgba (cr, g_outer2_rgba._r, g_outer2_rgba._g, g_outer2_rgba._b, g_outer2_rgba._a_pen);
+        cairo_stroke_preserve (cr);
+        cairo_reset_clip(cr);
+
+        /* Outline with a darker colour. */
+        cairo_set_line_width (cr, g_outer_inner_rgba._line_width);
+        cairo_set_source_rgba (cr, g_outer1_rgba._r, g_outer1_rgba._g, g_outer1_rgba._b, g_outer1_rgba._a_pen);
         cairo_stroke (cr);
+
+        cairo_path_destroy(path);
     }
     else if (fileleaf == g_root_fileleaf)
     {
+        cairo_path_t* path;
+
         /* Render the root menu outer. */
         cairo_arc (
             cr,
@@ -1702,6 +1816,8 @@ _ca_circular_application_menu_render_fileleaf(
             fileleaf->radius + RADIUS_SPACER,
             0,
             DEGREE_2_RADIAN(360));
+
+        path = cairo_copy_path(cr);
 
         cairo_new_sub_path (cr);
 
@@ -1714,11 +1830,31 @@ _ca_circular_application_menu_render_fileleaf(
             DEGREE_2_RADIAN(360));
 
         /* Render to the cairo context. */
-        cairo_set_line_width (cr, g_outer_inner_rgba._line_width);
         cairo_set_source_rgba (cr, g_outer_inner_rgba._r, g_outer_inner_rgba._g, g_outer_inner_rgba._b, g_outer_inner_rgba._a_fill);
         cairo_fill_preserve (cr);
-        cairo_set_source_rgba (cr, g_outer_inner_rgba._r, g_outer_inner_rgba._g, g_outer_inner_rgba._b, g_outer_inner_rgba._a_pen);
+
+        /* Render reflections. */
+        if (FALSE == private->render_reflection)
+        {
+            _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
+        }
+
+        cairo_new_path(cr);
+        cairo_append_path(cr, path);
+
+        /* Outline with a lighter colour. */
+        cairo_clip_preserve(cr);
+        cairo_set_line_width (cr, g_outer_inner_rgba._line_width * 3 /*Overlap from edge*/);
+        cairo_set_source_rgba (cr, g_outer2_rgba._r, g_outer2_rgba._g, g_outer2_rgba._b, g_outer2_rgba._a_pen);
+        cairo_stroke_preserve (cr);
+        cairo_reset_clip(cr);
+
+        /* Outline with a darker colour. */
+        cairo_set_line_width (cr, g_outer_inner_rgba._line_width);
+        cairo_set_source_rgba (cr, g_outer1_rgba._r, g_outer1_rgba._g, g_outer1_rgba._b, g_outer1_rgba._a_pen);
         cairo_stroke (cr);
+
+        cairo_path_destroy(path);
 
         /* The root menu won't have any overlapped parent menus. */
     }
@@ -1735,6 +1871,7 @@ _ca_circular_application_menu_render_fileleaf(
         */
 
         gdouble parent_angle;
+        cairo_path_t* path;
 
         parent_angle = fileleaf->_central_glyph->_parent_angle;
 
@@ -1902,6 +2039,8 @@ _ca_circular_application_menu_render_fileleaf(
 
         cairo_close_path(cr);
 
+        path = cairo_copy_path(cr);
+
         /* Make any overlapped portions of a parent menu appear more translucent. */
         cairo_set_operator (cr, CAIRO_OPERATOR_CLEAR);
         cairo_save(cr);
@@ -1921,7 +2060,6 @@ _ca_circular_application_menu_render_fileleaf(
             DEGREE_2_RADIAN(360.0));
 
         /* Render to the cairo context. */
-        cairo_set_line_width (cr, g_outer_inner_rgba._line_width);
         cairo_set_source_rgba (
 			cr,
 			g_outer_inner_rgba._r,
@@ -1929,13 +2067,29 @@ _ca_circular_application_menu_render_fileleaf(
 			g_outer_inner_rgba._b,
 			g_outer_inner_rgba._a_fill);
         cairo_fill_preserve (cr);
-        cairo_set_source_rgba (
-			cr,
-			g_outer_inner_rgba._r,
-			g_outer_inner_rgba._g,
-			g_outer_inner_rgba._b,
-			g_outer_inner_rgba._a_pen);
+
+        /* Render reflections. */
+        if (FALSE == private->render_reflection)
+        {
+            _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
+        }
+
+        cairo_new_path(cr);
+        cairo_append_path(cr, path);
+
+        /* Outline with a lighter colour. */
+        cairo_clip_preserve(cr);
+        cairo_set_line_width (cr, g_outer_inner_rgba._line_width * 3 /*Overlap from edge*/);
+        cairo_set_source_rgba (cr, g_outer2_rgba._r, g_outer2_rgba._g, g_outer2_rgba._b, g_outer2_rgba._a_pen);
+        cairo_stroke_preserve (cr);
+        cairo_reset_clip(cr);
+
+        /* Outline with a darker colour. */
+        cairo_set_line_width (cr, g_outer_inner_rgba._line_width);
+        cairo_set_source_rgba (cr, g_outer1_rgba._r, g_outer1_rgba._g, g_outer1_rgba._b, g_outer1_rgba._a_pen);
         cairo_stroke (cr);
+
+        cairo_path_destroy(path);
 
         /* Render the parent fileleaf association on the tab. */
         g_assert(fileleaf->_central_glyph->_associated_fileitem != NULL);
@@ -1966,12 +2120,14 @@ _ca_circular_application_menu_render_fileleaf(
 		g_outer_inner_rgba._b,
 		g_outer_inner_rgba._a_fill);
     cairo_fill_preserve (cr);
-    cairo_set_source_rgba (
-		cr,
-		g_outer_inner_rgba._r,
-		g_outer_inner_rgba._g,
-		g_outer_inner_rgba._b,
-		g_outer_inner_rgba._a_pen);
+
+    /* Render reflections. */
+    if (FALSE == private->render_reflection)
+    {
+        _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
+    }
+
+    cairo_set_source_rgba (cr, g_outer_inner_rgba._r, g_outer_inner_rgba._g, g_outer_inner_rgba._b, g_outer_inner_rgba._a_pen);
     cairo_stroke (cr);
 
     /* Render the fileleaf central glyph. */
@@ -2082,6 +2238,13 @@ _ca_circular_application_menu_render_fileleaf(
 				g_prelight_segment_rgba._b,
 				g_prelight_segment_rgba._a_fill);
             cairo_fill_preserve (cr);
+
+            /* Render reflections. */
+            if (FALSE == private->render_reflection)
+            {
+                _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
+            }
+
             cairo_set_source_rgba (
 				cr,
 				g_prelight_segment_rgba._r,
@@ -2103,6 +2266,13 @@ _ca_circular_application_menu_render_fileleaf(
 				g_normal_segment_rgba._b,
 				g_normal_segment_rgba._a_fill);
             cairo_fill_preserve (cr);
+
+            /* Render reflections. */
+            if (FALSE == private->render_reflection)
+            {
+                _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
+            }
+
             cairo_set_source_rgba (
 				cr,
 				g_normal_segment_rgba._r,
@@ -2185,6 +2355,13 @@ _ca_circular_application_menu_render_fileleaf(
 							g_prelight_segment_rgba._b,
 							g_prelight_segment_rgba._a_fill);
                         cairo_fill_preserve (cr);
+
+                        /* Render reflections. */
+                        if (FALSE == private->render_reflection)
+                        {
+                            _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
+                        }
+
                         cairo_set_source_rgba (
 							cr,
 							g_prelight_segment_rgba._r,
@@ -2206,6 +2383,13 @@ _ca_circular_application_menu_render_fileleaf(
 							g_normal_segment_rgba._b,
 							g_normal_segment_rgba._a_fill);
                         cairo_fill_preserve (cr);
+
+                        /* Render reflections. */
+                        if (FALSE == private->render_reflection)
+                        {
+                            _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
+                        }
+
                         cairo_set_source_rgba (
 							cr,
 							g_normal_segment_rgba._r,
@@ -2392,6 +2576,13 @@ _ca_circular_application_menu_render_fileleaf(
                         cairo_set_line_width (cr, g_prelight_segment_rgba._line_width);
                         cairo_set_source_rgba (cr, g_prelight_segment_rgba._r, g_prelight_segment_rgba._g, g_prelight_segment_rgba._b, g_prelight_segment_rgba._a_fill);
                         cairo_fill_preserve (cr);
+
+                        /* Render reflections. */
+                        if (FALSE == private->render_reflection)
+                        {
+                            _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
+                        }
+
                         cairo_set_source_rgba (cr, g_prelight_segment_rgba._r, g_prelight_segment_rgba._g, g_prelight_segment_rgba._b, g_prelight_segment_rgba._a_pen);
                         cairo_stroke (cr);
                     }
@@ -2403,6 +2594,13 @@ _ca_circular_application_menu_render_fileleaf(
                         cairo_set_line_width (cr, g_normal_segment_rgba._line_width);
                         cairo_set_source_rgba (cr, g_normal_segment_rgba._r, g_normal_segment_rgba._g, g_normal_segment_rgba._b, g_normal_segment_rgba._a_fill);
                         cairo_fill_preserve (cr);
+
+                        /* Render reflections. */
+                        if (FALSE == private->render_reflection)
+                        {
+                            _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
+                        }
+
                         cairo_set_source_rgba (cr, g_normal_segment_rgba._r, g_normal_segment_rgba._g, g_normal_segment_rgba._b, g_normal_segment_rgba._a_pen);
                         cairo_stroke (cr);
                     }

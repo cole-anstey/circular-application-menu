@@ -76,16 +76,18 @@ main (int argc, char **argv)
     gboolean hide_preview;
     gboolean warp_mouse;
     gboolean glyph_size;
-    gboolean blur;
+    gboolean blur_off;
     gchar* emblem;
+    gboolean render_reflection;
 
     GOptionEntry options[] =
     {
-        { "hide-preview", 'h', 0, G_OPTION_ARG_NONE, &hide_preview, "Hides the menu preview displayed when the mouse is over a menu.", NULL  },
-        { "warp-mouse-off", 'w', 0, G_OPTION_ARG_NONE, &warp_mouse, "Stops the mouse from warping to the centre of the screen whenever a menu is shown.", NULL  },
+        { "hide-preview", 'h', 0, G_OPTION_ARG_NONE, &hide_preview, "Hides the menu preview displayed when the mouse is over a menu.", NULL },
+        { "warp-mouse-off", 'w', 0, G_OPTION_ARG_NONE, &warp_mouse, "Stops the mouse from warping to the centre of the screen whenever a menu is shown.", NULL },
         { "glyph-size", 'g', 0, G_OPTION_ARG_INT, &glyph_size, "The size of the glyphs [S: 1=small 2=medium 3=large (default)]. ", "S"  },
-        { "blur-off", 'b', 0, G_OPTION_ARG_NONE, &blur, "Stops the blur from underneath the menu.", NULL  },
-        { "emblem", 'e', 0, G_OPTION_ARG_STRING, &emblem, "Specifies the (colon separated) emblems to use for the root menu [E: ./pixmaps/ubuntu-emblem-normal.png:./pixmaps/ubuntu-emblem-prelight.png].", NULL  },
+        { "blur-off", 'b', 0, G_OPTION_ARG_NONE, &blur_off, "Stops the blur from underneath the menu.", NULL },
+        { "emblem", 'e', 0, G_OPTION_ARG_STRING, &emblem, "Specifies the (colon separated) emblems to use for the root menu [E: ./pixmaps/ubuntu-emblem-normal.png:./pixmaps/ubuntu-emblem-prelight.png].", NULL },
+        { "render-reflection", 'r', 0, G_OPTION_ARG_NONE, &render_reflection, "Stops the reflection from being rendered.", NULL },        
         { NULL }
     };
 
@@ -107,6 +109,8 @@ main (int argc, char **argv)
     hide_preview = FALSE;
     warp_mouse = FALSE;
     glyph_size = 3;
+    blur_off = FALSE;
+    render_reflection = FALSE;
 
     /* Parse the arguments. */
     optioncontext = g_option_context_new("- circular-application-menu.");
@@ -153,7 +157,8 @@ main (int argc, char **argv)
         hide_preview,
         warp_mouse,
         glyph_size,
-        emblem);
+        emblem,
+        render_reflection);
     gtk_container_add (GTK_CONTAINER (window), circular_application_menu);
 
     g_signal_connect (window, "destroy", G_CALLBACK (gtk_main_quit), NULL);
@@ -162,7 +167,7 @@ main (int argc, char **argv)
     gtk_window_fullscreen(GTK_WINDOW(window));
 
     /* Check whether blur is enabled. */
-    if (blur)
+    if (FALSE == blur_off)
     {
         /* Use the compiz blur plugin to blur underneath the menus which makes the rendering clearer. */
         _ca_circular_application_menu_enable_blur(window);
