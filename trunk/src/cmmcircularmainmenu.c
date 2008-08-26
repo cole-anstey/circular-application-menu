@@ -136,12 +136,18 @@ struct _RGBA
 
 #define CRGB(x)                 (x / 255.0)
 
-/* Defines the colours etc.         Red        Green      Blue       Apen   Aline   lwidth   */
-RGBA g_normal_segment_rgba      = { CRGB(205), CRGB(233), CRGB(241), 0.8,   0.6,    0.0 };
-RGBA g_prelight_segment_rgba    = { CRGB(205), CRGB(233), CRGB(241), 1.0,   0.9,    0.0 };
-RGBA g_outer_inner_rgba         = { CRGB(205), CRGB(233), CRGB(241), 1.0,   0.6,    1.0 };
+/* Defines the colours etc.         Red        Green      Blue       Apen   Afill   lwidth   */
+//RGBA g_normal_segment_rgba      = { CRGB(205), CRGB(233), CRGB(241), 0.8,   0.8,    0.0 };
+//RGBA g_prelight_segment_rgba    = { CRGB(205), CRGB(233), CRGB(241), 1.0,   0.9,    0.0 };
+//RGBA g_outer_inner_rgba         = { CRGB(205), CRGB(233), CRGB(241), 1.0,   0.8,    1.0 };
+
+RGBA g_normal_segment_rgba      = { CRGB(0), CRGB(0), CRGB(0), 0.8,   0.8,    1.0 };
+RGBA g_prelight_segment_rgba    = { CRGB(0), CRGB(0), CRGB(0), 1.0,   0.9,    1.0 };
+RGBA g_outer_inner_rgba         = { CRGB(0), CRGB(0), CRGB(0), 1.0,   0.8,    1.0 };
+
 RGBA g_outer1_rgba              = { CRGB(0),   CRGB(0),   CRGB(0),   1.0,   0.0,    0.0 };  /* Aline + lwidth unused. */
-RGBA g_outer2_rgba              = { CRGB(255), CRGB(255), CRGB(255), 1.0,   0.0,    0.0 };  /* Aline + lwidth unused. */
+RGBA g_outer2_rgba              = { CRGB(255), CRGB(255), CRGB(255), 0.5,   0.0,    0.0 };  /* Aline + lwidth unused. */
+
 RGBA g_text_box_rgba            = { CRGB(0),   CRGB(0),   CRGB(0),   0.0,   0.8,    0.0 };
 RGBA g_text_rgba                = { CRGB(255), CRGB(255), CRGB(255), 0.0,   1.0,    0.0 };
 
@@ -449,6 +455,7 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
             case PROP_RENDER_REFLECTION:
             {
                 private->render_reflection = g_value_get_boolean (construct_params[param].value);
+                //private->render_reflection = TRUE;
 
                 break;
             }
@@ -762,11 +769,11 @@ _ca_circular_application_menu_expose (GtkWidget* widget, GdkEventExpose* event)
     cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
 
     /* VM - Non transparent debug. */
-    
+    /*
     cairo_rectangle (cr, 0, 0, widget->allocation.width, widget->allocation.height);
     cairo_set_source_rgba (cr, 0.8, 0.8, 0.8, 1.0);
     cairo_fill (cr);
-    
+    */
 
     /* Draw a gradient circle. */
     /* FIXME: Bit slow this and not working quite right.  Turn off for now.
