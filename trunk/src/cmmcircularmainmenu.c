@@ -454,8 +454,8 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
             }
             case PROP_RENDER_REFLECTION:
             {
-                private->render_reflection = g_value_get_boolean (construct_params[param].value);
-                //private->render_reflection = TRUE;
+                //private->render_reflection = g_value_get_boolean (construct_params[param].value);
+                private->render_reflection = TRUE;
 
                 break;
             }
