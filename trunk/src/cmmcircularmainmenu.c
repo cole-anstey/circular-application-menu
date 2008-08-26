@@ -33,6 +33,7 @@
 #include "../pixmaps/close-menu-normal.h"
 #include "../pixmaps/open-sub-menu-prelight.h"
 #include "../pixmaps/open-sub-menu-normal.h"
+#include "../pixmaps/reflection.h"
 
 /* Base functions. */
 static void _ca_circular_application_menu_class_init (CaCircularApplicationMenuClass* klass);
@@ -509,8 +510,7 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
 			(RADIUS_SPACER + CLOSEST_TAB_CIRCLE_RADIUS + FARTHEST_TAB_CIRCLE_RADIUS));
 
         /* Load the light reflection pixbuf. */
-        //private->light_pixbuf = gdk_pixbuf_new_from_inline (-1, close_menu_prelight, FALSE, NULL);
-        private->light_pixbuf = gdk_pixbuf_new_from_file("/home/collie/code/circular-application-menu/pixmaps/light.png", NULL);
+        private->light_pixbuf = gdk_pixbuf_new_from_inline (-1, reflection, FALSE, NULL);
         g_assert(private->light_pixbuf != NULL);
     }
 
