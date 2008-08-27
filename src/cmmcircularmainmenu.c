@@ -95,7 +95,7 @@ struct _CaCircularApplicationMenuPrivate
     /*< Options >*/
     gboolean hide_preview;
     gboolean xwarp_mouse_pointer;
-    gboolean render_reflection;
+    gboolean render_reflection_off;
     gint glyph_size;
     GdkPixbuf* emblem_normal;
     GdkPixbuf* emblem_prelight;
@@ -454,8 +454,7 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
             }
             case PROP_RENDER_REFLECTION:
             {
-                //private->render_reflection = g_value_get_boolean (construct_params[param].value);
-                private->render_reflection = TRUE;
+                private->render_reflection_off = g_value_get_boolean (construct_params[param].value);
 
                 break;
             }
@@ -1712,7 +1711,6 @@ _ca_circular_application_menu_render_reflection(CaCircularApplicationMenu* circu
     offset_x_start = ((gint)y1 / height) * 31;
     offset_y_start = ((gint)y1 % height);
 
-    cairo_set_operator (cr, CAIRO_OPERATOR_ADD);
     cairo_save(cr);
     cairo_clip_preserve(cr);
 
@@ -1727,7 +1725,6 @@ _ca_circular_application_menu_render_reflection(CaCircularApplicationMenu* circu
     }
 
     cairo_restore(cr);
-    cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
 }
 
 /**
@@ -1789,7 +1786,7 @@ _ca_circular_application_menu_render_fileleaf(
         cairo_fill_preserve (cr);
 
         /* Render reflections. */
-        if (FALSE == private->render_reflection)
+        if (FALSE == private->render_reflection_off)
         {
             _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
         }
@@ -1841,7 +1838,7 @@ _ca_circular_application_menu_render_fileleaf(
         cairo_fill_preserve (cr);
 
         /* Render reflections. */
-        if (FALSE == private->render_reflection)
+        if (FALSE == private->render_reflection_off)
         {
             _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
         }
@@ -2076,7 +2073,7 @@ _ca_circular_application_menu_render_fileleaf(
         cairo_fill_preserve (cr);
 
         /* Render reflections. */
-        if (FALSE == private->render_reflection)
+        if (FALSE == private->render_reflection_off)
         {
             _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
         }
@@ -2129,7 +2126,7 @@ _ca_circular_application_menu_render_fileleaf(
     cairo_fill_preserve (cr);
 
     /* Render reflections. */
-    if (FALSE == private->render_reflection)
+    if (FALSE == private->render_reflection_off)
     {
         _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
     }
@@ -2247,7 +2244,7 @@ _ca_circular_application_menu_render_fileleaf(
             cairo_fill_preserve (cr);
 
             /* Render reflections. */
-            if (FALSE == private->render_reflection)
+            if (FALSE == private->render_reflection_off)
             {
                 _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
             }
@@ -2275,7 +2272,7 @@ _ca_circular_application_menu_render_fileleaf(
             cairo_fill_preserve (cr);
 
             /* Render reflections. */
-            if (FALSE == private->render_reflection)
+            if (FALSE == private->render_reflection_off)
             {
                 _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
             }
@@ -2364,7 +2361,7 @@ _ca_circular_application_menu_render_fileleaf(
                         cairo_fill_preserve (cr);
 
                         /* Render reflections. */
-                        if (FALSE == private->render_reflection)
+                        if (FALSE == private->render_reflection_off)
                         {
                             _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
                         }
@@ -2392,7 +2389,7 @@ _ca_circular_application_menu_render_fileleaf(
                         cairo_fill_preserve (cr);
 
                         /* Render reflections. */
-                        if (FALSE == private->render_reflection)
+                        if (FALSE == private->render_reflection_off)
                         {
                             _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
                         }
@@ -2585,7 +2582,7 @@ _ca_circular_application_menu_render_fileleaf(
                         cairo_fill_preserve (cr);
 
                         /* Render reflections. */
-                        if (FALSE == private->render_reflection)
+                        if (FALSE == private->render_reflection_off)
                         {
                             _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
                         }
@@ -2603,7 +2600,7 @@ _ca_circular_application_menu_render_fileleaf(
                         cairo_fill_preserve (cr);
 
                         /* Render reflections. */
-                        if (FALSE == private->render_reflection)
+                        if (FALSE == private->render_reflection_off)
                         {
                             _ca_circular_application_menu_render_reflection(circular_application_menu, cr);
                         }
