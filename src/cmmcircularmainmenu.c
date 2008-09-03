@@ -153,7 +153,7 @@ RGBA g_text_rgba                = { CRGB(255), CRGB(255), CRGB(255), 0.0,   1.0,
 
 /* Constants. */
 #define FADE_TIMER_INTERVAL        		15		/* The interval used for fading the menus. */
-#define FADE_PERCENTAGE_INCREMENT       5		/* The percentage increment when fading. */
+#define FADE_PERCENTAGE_INCREMENT       5		/* The percentacge increment when fading. */
 #define OVERLAP_TRANSLUCENCY            0.75    /* The translucency for overlapped parent menus. */
 #define TEXT_BOUNDARY                   1.0     /* The boundary surrounding the text. */
 #define RADIUS_SPACER                   4.0
@@ -433,11 +433,16 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
             }
             case PROP_EMBLEM:
             {
+                gchar* passed_emblem;
                 gchar* emblems;
 
+                passed_emblem = g_value_get_string (construct_params[param].value);
                 emblems = (gchar*)g_malloc0(sizeof(gchar) * 255);
 
-                strcpy(emblems, g_value_get_string (construct_params[param].value));
+                if (passed_emblem != NULL)
+                {
+                    strcpy(emblems, passed_emblem);
+                }
 
                 /* Assign the default emblem if none has been specified. */
                 if (strlen(emblems) == 0)
