@@ -99,6 +99,7 @@ struct _CaCircularApplicationMenuPrivate
     gint glyph_size;
     GdkPixbuf* emblem_normal;
     GdkPixbuf* emblem_prelight;
+    gboolean render_tabbed_only;
 };
 
 #define CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE ((obj), CA_TYPE_CIRCULAR_APPLICATION_MENU, CaCircularApplicationMenuPrivate))
@@ -201,6 +202,7 @@ enum
     PROP_GLYPH_SIZE,
     PROP_EMBLEM,
     PROP_RENDER_REFLECTION,
+    PROP_RENDER_TABBED_ONLY,
 };
 
 static CaFileLeaf* g_root_fileleaf = NULL;
@@ -218,13 +220,14 @@ static CaFileLeaf* g_disassociated_fileleaf = NULL;
  * @glyph_size: An integer that specifes the default glyph size.
  * @emblem: A gchar pointer to the root menu emblem to use.
  * @render_reflection: A boolean that specifies whether the reflection should be rendered.
+ * @render_tabbed_only: A boolean that specifies whether rendering only occurrs for the currently tabbed menu.
  *
  * Constructs a new dockband widget.
  *
  * Returns: a GtkWidget pointer to the newly constructed widget.
  **/
 GtkWidget *
-ca_circular_application_menu_new (gboolean hide_preview, gboolean warp_mouse, gint glyph_size, gchar* emblem, gboolean render_reflection)
+ca_circular_application_menu_new (gboolean hide_preview, gboolean warp_mouse, gint glyph_size, gchar* emblem, gboolean render_reflection, gboolean render_tabbed_only)
 {
     GObject* object;
 
@@ -237,6 +240,7 @@ ca_circular_application_menu_new (gboolean hide_preview, gboolean warp_mouse, gi
         "glyph-size", glyph_size,
         "emblem", emblem,
         "render-reflection", render_reflection,
+        "render-tabbed-only", render_tabbed_only,
         NULL);
 
     return GTK_WIDGET(object);
@@ -436,7 +440,7 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
                 gchar* passed_emblem;
                 gchar* emblems;
 
-                passed_emblem = g_value_get_string (construct_params[param].value);
+                passed_emblem = (gchar*)g_value_get_string (construct_params[param].value);
                 emblems = (gchar*)g_malloc0(sizeof(gchar) * 255);
 
                 if (passed_emblem != NULL)
@@ -460,6 +464,12 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
             case PROP_RENDER_REFLECTION:
             {
                 private->render_reflection_off = g_value_get_boolean (construct_params[param].value);
+
+                break;
+            }
+            case PROP_RENDER_TABBED_ONLY:
+            {
+                private->render_tabbed_only = g_value_get_boolean (construct_params[param].value);
 
                 break;
             }
@@ -710,6 +720,16 @@ _ca_circular_application_menu_class_init (CaCircularApplicationMenuClass* klass)
             "render-reflection",
             "Render Reflection",
             "Render Reflection.",
+            FALSE,
+            G_PARAM_WRITABLE|G_PARAM_CONSTRUCT_ONLY));
+
+    g_object_class_install_property (
+        gobject_class,
+        PROP_RENDER_TABBED_ONLY,
+        g_param_spec_boolean (
+            "render-tabbed-only",
+            "Render Tabbed Only",
+            "Render Tabbed Only.",
             FALSE,
             G_PARAM_WRITABLE|G_PARAM_CONSTRUCT_ONLY));
 
@@ -1420,6 +1440,10 @@ _ca_circular_application_menu_hittest(
 	CaFileLeaf** found_fileleaf,
 	CaFileItem** found_fileitem)
 {
+    CaCircularApplicationMenuPrivate* private;
+
+    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+
     *found_fileleaf = NULL;
     *found_fileitem = NULL;
 
@@ -1434,23 +1458,37 @@ _ca_circular_application_menu_hittest(
 
         /* Walk from the last opened fileleaf to the root fileleaf so overlapped */
         /* fileitems take precedence. */
-        current_fileleaf = g_last_opened_fileleaf;
-
+        current_fileleaf = g_last_opened_fileleaf;
         /* Iterate the fileleafs. */
         do
         {
+            gboolean allow_hitest;
             GList* sub_list;
 
-            hit_type = _ca_circular_application_menu_hittest_fileleaf(
-				circular_application_menu,
-				current_fileleaf,
-				x,
-				y,
-				found_fileleaf,
-				found_fileitem);
+            allow_hitest = TRUE;
 
-            if (GLYPH_UNKNOWN != hit_type)
-                return hit_type;    /* Found. */
+            if (private->render_tabbed_only)
+            {
+                if (current_fileleaf != g_tabbed_fileleaf)
+                {
+                    allow_hitest = FALSE;
+                }
+            }
+
+            /* Check whether the fileleaf allows a hittest. */
+            if (allow_hitest)
+            {
+                hit_type = _ca_circular_application_menu_hittest_fileleaf(
+				    circular_application_menu,
+				    current_fileleaf,
+				    x,
+				    y,
+				    found_fileleaf,
+				    found_fileitem);
+
+                if (GLYPH_UNKNOWN != hit_type)
+                    return hit_type;    /* Found. */
+            }
 
             /* Iterate the sub fileleafs. */
             sub_list = g_list_first(current_fileleaf->_sub_fileleaves_list);
@@ -1462,16 +1500,30 @@ _ca_circular_application_menu_hittest(
                 sub_fileleaf = (CaFileLeaf*)sub_list->data;
                 g_assert(sub_fileleaf != NULL);
 
-                hit_type = _ca_circular_application_menu_hittest_fileleaf(
-					circular_application_menu,
-					sub_fileleaf,
-					x,
-					y,
-					found_fileleaf,
-					found_fileitem);
+                allow_hitest = TRUE;
 
-                if (GLYPH_UNKNOWN != hit_type)
-                    return hit_type;    /* Found. */
+                if (private->render_tabbed_only)
+                {
+                    if (sub_fileleaf != g_tabbed_fileleaf)
+                    {
+                        allow_hitest = FALSE;
+                    }
+                }
+
+                /* Check whether the fileleaf allows a hittest. */
+                if (allow_hitest)
+                {
+                    hit_type = _ca_circular_application_menu_hittest_fileleaf(
+					    circular_application_menu,
+					    sub_fileleaf,
+					    x,
+					    y,
+					    found_fileleaf,
+					    found_fileitem);
+
+                    if (GLYPH_UNKNOWN != hit_type)
+                        return hit_type;    /* Found. */
+                }
 
                 sub_list = g_list_next(sub_list);
             }
@@ -1637,7 +1689,11 @@ _ca_circular_applications_menu_get_segment_angles(CaFileItem* fileitem, gint rad
 static void
 _ca_circular_application_menu_render(CaCircularApplicationMenu* circular_application_menu, cairo_t* cr)
 {
+    CaCircularApplicationMenuPrivate* private;
     CaFileLeaf* current_fileleaf;
+    gboolean render_fileleaf;
+
+    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
 
     if (g_root_fileleaf == NULL)
         return;
@@ -1651,8 +1707,22 @@ _ca_circular_application_menu_render(CaCircularApplicationMenu* circular_applica
     {
         GList* sub_list;
 
-		/* Render the file-leaf to a cairo context. */
-        _ca_circular_application_menu_render_fileleaf(circular_application_menu, current_fileleaf, cr);
+        /* Check whether the fileleaf should be rendered. */
+        render_fileleaf = TRUE;
+
+        if (private->render_tabbed_only)
+        {
+            if (current_fileleaf != g_tabbed_fileleaf)
+            {
+                render_fileleaf = FALSE;
+            }
+        }
+
+        if (render_fileleaf)
+        {
+		    /* Render the file-leaf to a cairo context. */
+            _ca_circular_application_menu_render_fileleaf(circular_application_menu, current_fileleaf, cr);
+        }
 
         /* Iterate the sub fileleafs. */
         sub_list = g_list_first(current_fileleaf->_sub_fileleaves_list);
@@ -1664,8 +1734,22 @@ _ca_circular_application_menu_render(CaCircularApplicationMenu* circular_applica
             sub_fileleaf = (CaFileLeaf*)sub_list->data;
             g_assert(sub_fileleaf != NULL);
 
-			/* Render the file-leaf to a cairo context. */
-            _ca_circular_application_menu_render_fileleaf(circular_application_menu, sub_fileleaf, cr);
+            /* Check whether the fileleaf should be rendered. */
+            render_fileleaf = TRUE;
+
+            if (private->render_tabbed_only)
+            {
+                if (sub_fileleaf != g_tabbed_fileleaf)
+                {
+                    render_fileleaf = FALSE;
+                }
+            }
+
+            if (render_fileleaf)
+            {
+			    /* Render the file-leaf to a cairo context. */
+                _ca_circular_application_menu_render_fileleaf(circular_application_menu, sub_fileleaf, cr);
+            }
 
             sub_list = g_list_next(sub_list);
         }

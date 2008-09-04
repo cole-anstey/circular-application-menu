@@ -79,6 +79,7 @@ main (int argc, char **argv)
     gboolean blur_off;
     gchar* emblem;
     gboolean render_reflection;
+    gboolean render_tabbed_only;
 
     GOptionEntry options[] =
     {
@@ -87,7 +88,8 @@ main (int argc, char **argv)
         { "glyph-size", 'g', 0, G_OPTION_ARG_INT, &glyph_size, "The size of the glyphs [S: 1=small 2=medium 3=large (default)]. ", "S"  },
         { "blur-off", 'b', 0, G_OPTION_ARG_NONE, &blur_off, "Stops the blur from underneath the menu.", NULL },
         { "emblem", 'e', 0, G_OPTION_ARG_STRING, &emblem, "Specifies the (colon separated) emblems to use for the root menu [E: ./pixmaps/ubuntu-emblem-normal.png:./pixmaps/ubuntu-emblem-prelight.png].", NULL },
-        { "render-reflection", 'r', 0, G_OPTION_ARG_NONE, &render_reflection, "Stops the reflection from being rendered.", NULL },        
+        { "render-reflection", 'r', 0, G_OPTION_ARG_NONE, &render_reflection, "Stops the reflection from being rendered.", NULL },
+        { "render-tabbed-only", 't', 0, G_OPTION_ARG_NONE, &render_tabbed_only, "Only renders the currently tabbed menu.", NULL },        
         { NULL }
     };
 
@@ -111,6 +113,7 @@ main (int argc, char **argv)
     glyph_size = 3;
     blur_off = FALSE;
     render_reflection = FALSE;
+    render_tabbed_only = FALSE;
 
     /* Parse the arguments. */
     optioncontext = g_option_context_new("- circular-application-menu.");
@@ -158,7 +161,8 @@ main (int argc, char **argv)
         warp_mouse,
         glyph_size,
         emblem,
-        render_reflection);
+        render_reflection,
+        render_tabbed_only);
     gtk_container_add (GTK_CONTAINER (window), circular_application_menu);
 
     g_signal_connect (window, "destroy", G_CALLBACK (gtk_main_quit), NULL);
