@@ -1013,6 +1013,7 @@ _ca_circular_application_menu_key_release(GtkWidget* widget, GdkEventKey* event)
 
         g_tabbed_fileleaf = position_fileleaf;
 
+        /* Centre the view around the given file-leaf. */
         _ca_circular_application_menu_view_centre_fileleaf(
 			circular_application_menu,
 			g_tabbed_fileleaf,
@@ -1076,6 +1077,7 @@ _ca_circular_application_menu_motion_notify(GtkWidget* widget, GdkEventMotion* e
     previous_fileitem = g_current_fileitem;
     previous_type = g_current_type;
 
+    /* Retrieve the glyph-type, file-leaf and file-item at the specified mouse co-ordinate. */
     g_current_type = _ca_circular_application_menu_hittest(
         circular_application_menu,
         SCREEN_2_OFFSET((gint)event->x, private->view_x_offset),
@@ -1203,6 +1205,7 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
             x = g_tabbed_fileleaf->x + ((private->view_width / 2) - event->x);
             y = g_tabbed_fileleaf->y + ((private->view_height / 2) - event->y);
 
+            /* Centre the view around the given file-leaf. */
             _ca_circular_application_menu_view_centre_fileleaf(
                 circular_application_menu,
                 g_tabbed_fileleaf,
@@ -1252,6 +1255,7 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
 
             g_current_fileitem = sub_fileleaf->_central_glyph;    /* Disassociated current fileitem so the text changes. */
 
+            /* Centre the view around the given file-leaf. */
             _ca_circular_application_menu_view_centre_fileleaf(circular_application_menu, sub_fileleaf, -1, -1);
 
             /* Update the current navigational fileleafs. */
@@ -1260,6 +1264,7 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
 
             /* Update to reflect the new view position. */
 
+            /* Retrieve the glyph-type, file-leaf and file-item at the specified mouse co-ordinate. */
             g_current_type = _ca_circular_application_menu_hittest(
                 circular_application_menu,
                 SCREEN_2_OFFSET((gint)event->x, private->view_x_offset),
@@ -1297,6 +1302,7 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
 
             /* Update to reflect the new view position. */
 
+            /* Retrieve the glyph-type, file-leaf and file-item at the specified mouse co-ordinate. */
             g_current_type = _ca_circular_application_menu_hittest(
                 circular_application_menu,
                 SCREEN_2_OFFSET((gint)event->x, private->view_x_offset),
@@ -1349,21 +1355,28 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
             ...just does not want to work, so use execlp instead.
             */
             {
-                const char* app;
-                char arg[255];
+                gchar* app;
+                gchar* arg[255];
+                gchar* token;
                 gint i;
 
-                app = gnome_desktop_item_get_string(desktopitem, GNOME_DESKTOP_ITEM_EXEC);
+                i = 0;
+                app = (gchar*)gnome_desktop_item_get_string(desktopitem, GNOME_DESKTOP_ITEM_EXEC);
+
+                token = strtok(app, " ");   /* This is the first char of the string. */
+                arg[i++] = token;
 
                 /* Strip off any arguments. */
-                for (i = 0; app[i] && app[i] != ' '; ++i)
+                while(token != NULL)
                 {
-                    arg[i] = app[i];
+                    token = strtok(NULL, " ");
+                    arg[i++] = token;
                 }
 
-                arg[i] = '\0';
+                arg[i] = NULL;
 
-                execlp(arg, arg, NULL);
+                /* Launch the application. */
+                execvp(arg[0], arg);
             }
 
             gnome_desktop_item_unref (desktopitem);
@@ -1478,6 +1491,7 @@ _ca_circular_application_menu_hittest(
             /* Check whether the fileleaf allows a hittest. */
             if (allow_hitest)
             {
+                /* Retrieve the glyph-type, file-leaf and file-item at the specified mouse co-ordinate; for a given parent file-leaf. */
                 hit_type = _ca_circular_application_menu_hittest_fileleaf(
 				    circular_application_menu,
 				    current_fileleaf,
@@ -1513,6 +1527,7 @@ _ca_circular_application_menu_hittest(
                 /* Check whether the fileleaf allows a hittest. */
                 if (allow_hitest)
                 {
+                    /* Retrieve the glyph-type, file-leaf and file-item at the specified mouse co-ordinate; for a given parent file-leaf. */
                     hit_type = _ca_circular_application_menu_hittest_fileleaf(
 					    circular_application_menu,
 					    sub_fileleaf,
