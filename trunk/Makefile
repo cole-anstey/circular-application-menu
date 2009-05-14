@@ -5,8 +5,8 @@ GROUP=users
 INCLUDES=/opt/gnome/include
 
 CC=gcc
-CFLAGS=`pkg-config --cflags gtk+-2.0 gnome-desktop-2.0` -g -Wall -O2 -DDEBUG -I$(INCLUDES) 
-LIBS = `pkg-config --libs gtk+-2.0 gnome-desktop-2.0` -lgnome-menu
+CFLAGS=`pkg-config --cflags gtk+-2.0 gnome-desktop-2.0 gnome-vfs-2.0` -g -Wall -O2 -DDEBUG -I$(INCLUDES) 
+LIBS = `pkg-config --libs gtk+-2.0 gnome-desktop-2.0 gnome-vfs-2.0` -lgnome-menu
 
 all: $(OBJS)
 	$(CC) $(DEFINES) $(CFLAGS) $(OBJS) -o $(PROGRAM) $(LIBS)
