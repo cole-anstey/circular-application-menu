@@ -3707,7 +3707,7 @@ _ca_circular_applications_menu_get_pixbuf_from_name(const char* name, gint width
         screen = gdk_screen_get_default();
         theme = gtk_icon_theme_get_for_screen (screen);
     
-        icon_info = gtk_icon_theme_lookup_icon (		    theme,		    name,		    width,		    GTK_ICON_LOOKUP_NO_SVG);
+        icon_info = gtk_icon_theme_lookup_icon (		    theme,		    name,		    width,		    GTK_ICON_LOOKUP_USE_BUILTIN);   /* Previous setting was GTK_ICON_LOOKUP_NO_SVG. */
 
         if (icon_info != NULL)
         {
@@ -3750,6 +3750,7 @@ _ca_circular_applications_menu_get_pixbuf_from_name(const char* name, gint width
 
     if (icon == NULL)
     {
+        /* No icon was found so use a default. */
         icon = gtk_icon_theme_load_icon (
             gtk_icon_theme_get_default (),
             GTK_STOCK_FILE,
