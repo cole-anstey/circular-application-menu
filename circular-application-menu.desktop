@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Name=Circular-Application-Menu
+Exec=circular-main-menu
+Terminal=false
+X-MultipleArgs=false
+Type=Application
+Icon=circular-application-menu
+Categories=Utility;

@@ -1,0 +1,29 @@
+.TH "circular-main-menu" "1" "2011-11-27" "inne" "circular-application-menu"
+.SH NAME
+circular-main-menu - circular-application-menu (C-A-M) representation for the GNOME desktop
+.SH SYNOPSIS
+circular-main-menu OPTION...
+.SH DESCRIPTION
+This is a circular-application-menu (C-A-M) prototype mirroring the 
+same structure as the existing application menu for the GNOME 
+desktop. This was originally just a paper prototype by Cole Anstey.
+.SH OPTIONS
+.SS -?, --help
+Show help options 
+.SS -h, --hide-preview
+Hides the menu preview displayed when the mouse is over a menu. 
+.SS -w, --warp-mouse-off
+Stops the mouse from warping to the centre of the screen whenever a 
+menu is shown.
+.SS -g, --glyph-size=S
+The size of the glyphs 1=small 2=medium 3=large (default).
+.SS -b, --blur-off
+Stops the blur from underneath the menu.
+.SS -e, --emblem=E
+Specifies the emblems (colon separated) to use for the root menu.
+.BR
+Example: \-\-emblem="./emblem-\fBnormal\fR.png:./emblem-\fBprelight\fR.png\fR"
+.BR
+(You can find some emblems in \fI/usr/share/circular-application-menu/pixmaps\fR.)
+.SS -t, --render-tabbed-only
+Only shows the currently tabbed menu.
