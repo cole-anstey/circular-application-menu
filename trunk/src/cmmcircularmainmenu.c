@@ -1347,13 +1347,15 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
                 GNOME_DESKTOP_ITEM_LOAD_ONLY_IF_EXISTS|GNOME_DESKTOP_ITEM_LOAD_NO_TRANSLATIONS,
                 NULL);
 
-            /*
-            FIXME: The following call to...
-
             gnome_desktop_item_launch (desktopitem, NULL, GNOME_DESKTOP_ITEM_LAUNCH_ONLY_ONE, NULL);
+            
+            /*
+                The following code was an alternative to at this time non-working function call:
 
-            ...just does not want to work, so use execlp instead.
-            */
+                    gnome_desktop_item_launch (desktopitem, NULL, GNOME_DESKTOP_ITEM_LAUNCH_ONLY_ONE, NULL);
+
+                ... but it seems this function works now, and we don't must use execlp instead anymore.
+
             {
                 gchar* app;
                 gchar* arg[255];
@@ -1363,10 +1365,10 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
                 i = 0;
                 app = (gchar*)gnome_desktop_item_get_string(desktopitem, GNOME_DESKTOP_ITEM_EXEC);
 
-                token = strtok(app, " ");   /* This is the first char of the string. */
+                token = strtok(app, " ");   // This is the first char of the string.
                 arg[i++] = token;
 
-                /* Strip off any arguments. */
+                // Strip off any arguments.
                 while(token != NULL)
                 {
                     token = strtok(NULL, " ");
@@ -1375,9 +1377,10 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
 
                 arg[i] = NULL;
 
-                /* Launch the application. */
+                // Launch the application.
                 execvp(arg[0], arg);
             }
+            */
 
             gnome_desktop_item_unref (desktopitem);
 

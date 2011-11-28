@@ -1,0 +1,6 @@
+Depends and Build-Depends
+=========================
+For simplicity I set all required versions to the current available
+version in Debian Squeeze. So if you build it under a older release,
+just try to set the version to your current installed.
+

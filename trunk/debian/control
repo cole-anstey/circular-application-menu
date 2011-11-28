@@ -1,0 +1,34 @@
+Source: circular-application-menu
+Section: gnome
+Priority: extra
+Maintainer: Steffen Rumberger <steffen.rumberger@googlemail.com>
+Build-Depends:
+	debhelper (>= 8.0.0),
+	libgtk2.0-dev (>= 2.12),
+	libgnome-desktop-dev (>= 2.30.2),
+	libgnomevfs2-dev (>= 1:2.24.3),
+	libgnome-menu-dev (>= 2.30.3)
+Standards-Version: 3.9.1
+Homepage: http://code.google.com/p/circular-application-menu
+
+Package: circular-application-menu
+Architecture: i386 amd64
+Depends:
+	${shlibs:Depends},
+	${misc:Depends},
+	libatk1.0-0 (>= 1.20.0),
+	libcairo2 (>= 1.2.4),
+	libfontconfig1 (>= 2.4.0),
+	libfreetype6 (>= 2.2.1),
+	libgconf2-4 (>= 2.13.5),
+	libglib2.0-0 (>= 2.16.0),
+	libgnome-desktop-2-17 (>= 2.30.2),
+	libgnome-menu2 (>= 2.15.4),
+	libgnomevfs2-0 (>= 1:2.17.90),
+	libgtk2.0-0 (>= 2.16.0),
+	libpango1.0-0 (>= 1.14.0),
+	libstartup-notification0 (>= 0.8-1)
+Description: A Circular-Application-Menu (C-A-M) for the GNOME desktop
+ This is a circular-application-menu (C-A-M) prototype mirroring
+ the same structure as the exisiting application menu for the
+ GNOME desktop.

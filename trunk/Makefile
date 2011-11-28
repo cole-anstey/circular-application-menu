@@ -8,15 +8,21 @@ CC=gcc
 CFLAGS=`pkg-config --cflags gtk+-2.0 gnome-desktop-2.0 gnome-vfs-2.0` -g -Wall -O2 -DDEBUG -I$(INCLUDES) 
 LIBS = `pkg-config --libs gtk+-2.0 gnome-desktop-2.0 gnome-vfs-2.0` -lgnome-menu
 
+IMAGES = \
+	pixmaps/close-menu-normal.svg \
+	pixmaps/close-menu-prelight.svg
+
 all: $(OBJS)
 	$(CC) $(DEFINES) $(CFLAGS) $(OBJS) -o $(PROGRAM) $(LIBS)
 
 clean: 
-	rm -f *.o $(PROGRAM)
+	rm -f src/*.o $(PROGRAM)
 
-IMAGES = \
-	pixmaps/close-menu-normal.svg \
-	pixmaps/close-menu-prelight.svg
+install:
+	install -D -m0755 $(PROGRAM) $(DESTDIR)/usr/bin/$(PROGRAM)
+
+uninstall:
+	rm -f $(DESTDIR)/usr/bin/$(PROGRAM)
 
 circularmainmenu:	$(OBJS) 
 

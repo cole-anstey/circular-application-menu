@@ -1,0 +1,3 @@
+circular-application-menu.png circular-application-menu.svg /usr/share/pixmaps
+circular-application-menu.desktop /usr/share/applications
+pixmaps/*.png pixmaps/*.svg /usr/share/circular-application-menu/pixmaps
