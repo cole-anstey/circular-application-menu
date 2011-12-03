@@ -1,13 +1,12 @@
 Format: http://dep.debian.net/deps/dep5
 Upstream-Name: circular-application-menu
+Upstream-Contact: Cole Anstey <cole.anstey@gmail.com>
+                  Steffen Rumberger <steffen.rumberger@googlemail.com>
 Source: http://code.google.com/p/circular-application-menu
 
-Copyright: 2008 Cole Anstey <cole.anstey@gmail.com>
-License: GPL-2+
-
-Files: debian/*
-Copyright: 2011 Steffen Rumberger <steffen.rumberger@googlemail.com>
-
+Files: *
+Copyright: 2008-2011 Cole Anstey <cole.anstey@gmail.com>
+                     Steffen Rumberger <steffen.rumberger@googlemail.com>
 License: GPL-2+
  This package is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
