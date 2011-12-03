@@ -1,18 +1,26 @@
 PROGRAM=circular-main-menu
-OBJS=src/main.o src/cmmcircularmainmenu.o
-BIN_PATH=/usr/local/bin
+OBJS = \
+	src/main.o \
+	src/cmmcircularmainmenu.o
+BIN_PATH=/usr/local/bin	
 GROUP=users
 INCLUDES=/opt/gnome/include
 
 CC=gcc
-CFLAGS=`pkg-config --cflags gtk+-2.0 gnome-desktop-2.0 gnome-vfs-2.0` -g -Wall -O2 -DDEBUG -I$(INCLUDES) 
-LIBS = `pkg-config --libs gtk+-2.0 gnome-desktop-2.0 gnome-vfs-2.0` -lgnome-menu
+CFLAGS=-g -O2 -DDEBUG -I$(INCLUDES)
+#CFLAGS+=-fdump-rtl-expand # callgraph generation
+CFLAGS+=`pkg-config --cflags gtk+-3.0 gio-2.0 gnome-vfs-2.0`
+CFLAGS+=-DGTK_DISABLE_SINGLE_INCLUDES
+CFLAGS+=-DGDK_DISABLE_DEPRECATED
+CFLAGS+=-DGSEAL_ENABLE
+
+LIBS=`pkg-config --libs gtk+-3.0 gnome-vfs-2.0` -lgnome-menu
 
 IMAGES = \
 	pixmaps/close-menu-normal.svg \
 	pixmaps/close-menu-prelight.svg
 
-all: $(OBJS)
+all: clean $(OBJS)
 	$(CC) $(DEFINES) $(CFLAGS) $(OBJS) -o $(PROGRAM) $(LIBS)
 
 clean: 
@@ -22,7 +30,7 @@ install:
 	install -D -m0755 $(PROGRAM) $(DESTDIR)/usr/bin/$(PROGRAM)
 
 uninstall:
-	rm -f $(DESTDIR)/usr/bin/$(PROGRAM)
+	rm -r $(DESTDIR)/usr/bin/$(PROGRAM)
 
 circularmainmenu:	$(OBJS) 
 
@@ -39,4 +47,3 @@ rpm: dist
 
 tar:
 	tar -pczf $(distdir).tar.gz ./circular-main-menu
-

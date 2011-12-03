@@ -55,7 +55,7 @@ _ca_circular_application_menu_enable_blur(GtkWidget* window)
 
     XChangeProperty (
         xdisplay,
-        GDK_WINDOW_XID (window->window),
+        GDK_WINDOW_XID (gtk_widget_get_window (window)),
         XInternAtom (xdisplay, "_COMPIZ_WM_WINDOW_BLUR", FALSE),
         XA_INTEGER,
         32, PropModeReplace, (guchar *) data,
@@ -67,19 +67,20 @@ main (int argc, char **argv)
 {
     GtkWidget* window;
     GdkScreen* screen;
-    GdkColormap* colormap;
+    GdkVisual* visual;
     GtkWidget* circular_application_menu;
     GOptionContext* optioncontext;
     GError* error = NULL;
     GMenuTree* tree;
     GMenuTreeDirectory* root;
-    gboolean hide_preview;
-    gboolean warp_mouse;
-    gboolean glyph_size;
-    gboolean blur_off;
-    gchar* emblem;
-    gboolean render_reflection;
-    gboolean render_tabbed_only;
+    /* Default values. */
+    gboolean hide_preview = FALSE;
+    gboolean warp_mouse = FALSE;
+    gboolean glyph_size = 3;
+    gboolean blur_off = FALSE;
+    gchar* emblem = "/usr/share/circular-application-menu/pixmaps/default-emblem-normal.png:/usr/share/circular-application-menu/pixmaps/default-emblem-prelight.png";
+    gboolean render_reflection = FALSE;
+    gboolean render_tabbed_only = FALSE;
 
     GOptionEntry options[] =
     {
@@ -107,14 +108,6 @@ main (int argc, char **argv)
         g_warning (_("The menu tree is empty."));
     }
 
-    /* Default values. */
-    hide_preview = FALSE;
-    warp_mouse = FALSE;
-    glyph_size = 3;
-    blur_off = FALSE;
-    render_reflection = FALSE;
-    render_tabbed_only = FALSE;
-
     /* Parse the arguments. */
     optioncontext = g_option_context_new("- circular-application-menu.");
     g_option_context_add_main_entries(optioncontext, options, "circular_applications");
@@ -140,15 +133,13 @@ main (int argc, char **argv)
     window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
 
     /* Assign an alpha colormap to the window. */
-    screen = gtk_widget_get_screen (window);
-    colormap = gdk_screen_get_rgba_colormap (screen);
+    screen = gtk_widget_get_screen (GTK_WIDGET (window)); // screen = gdk_screen_get_default ();
+    visual = gdk_screen_get_rgba_visual (screen);
 
-    if (!colormap)
-    {
-        colormap = gdk_screen_get_rgb_colormap (screen);
-    }
+    if (visual == NULL)
+        visual = gdk_screen_get_system_visual (screen);
 
-    gtk_widget_set_colormap (window, colormap);
+    gtk_widget_set_visual (window, visual);
     /*
     Does not seem to be required.
     gdk_window_set_decorations(window->window, 0);

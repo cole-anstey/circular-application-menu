@@ -23,7 +23,7 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 #include <gdk/gdkx.h>
-#include <libgnome/gnome-desktop-item.h>
+#include <gio/gdesktopappinfo.h>
 
 #include <math.h>
 #include <string.h>
@@ -39,9 +39,11 @@
 static void _ca_circular_application_menu_class_init (CaCircularApplicationMenuClass* klass);
 static void _ca_circular_application_menu_init (CaCircularApplicationMenu* widget);
 static GObject* _ca_circular_application_menu_constructor (GType type, guint n_construct_params, GObjectConstructParam* construct_params);
-static void _ca_circular_application_menu_destroy(GtkObject* object);
-static gboolean _ca_circular_application_menu_expose(GtkWidget* widget, GdkEventExpose *event);
+static void _ca_circular_application_menu_destroy(GtkWidget* object);
+static gboolean _ca_circular_application_menu_draw(GtkWidget* widget, cairo_t *cr, gpointer data);
 static void _ca_circular_application_menu_size_request(GtkWidget* widget, GtkRequisition* requisition);
+static void _ca_circular_application_menu_get_preferred_width (GtkWidget *widget, gint *minimal_width, gint *natural_width);
+static void _ca_circular_application_menu_get_preferred_height (GtkWidget *widget, gint *minimal_height, gint *natural_height);
 static gboolean _ca_circular_application_menu_button_press(GtkWidget* widget, GdkEventButton* event);
 static gboolean _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* event);
 static gboolean _ca_circular_application_menu_key_release(GtkWidget* widget, GdkEventKey* event);
@@ -227,7 +229,13 @@ static CaFileLeaf* g_disassociated_fileleaf = NULL;
  * Returns: a GtkWidget pointer to the newly constructed widget.
  **/
 GtkWidget *
-ca_circular_application_menu_new (gboolean hide_preview, gboolean warp_mouse, gint glyph_size, gchar* emblem, gboolean render_reflection, gboolean render_tabbed_only)
+ca_circular_application_menu_new (
+	gboolean hide_preview,
+	gboolean warp_mouse,
+	gint glyph_size,
+	gchar* emblem,
+	gboolean render_reflection,
+	gboolean render_tabbed_only)
 {
     GObject* object;
 
@@ -256,7 +264,9 @@ ca_circular_application_menu_new (gboolean hide_preview, gboolean warp_mouse, gi
  * Returns: The newly created root CaFileLeaf.
  */
 CaFileLeaf*
-ca_circular_application_menu(CaCircularApplicationMenu* circular_application_menu, GMenuTreeDirectory* menutreedirectory)
+ca_circular_application_menu(
+	CaCircularApplicationMenu* circular_application_menu,
+	GMenuTreeDirectory* menutreedirectory)
 {
     CaCircularApplicationMenuPrivate* private;
     CaFileLeaf* fileleaf;
@@ -269,11 +279,9 @@ ca_circular_application_menu(CaCircularApplicationMenu* circular_application_men
     if (FALSE == private->xwarp_mouse_pointer)
     {
         /* Move that pointer! */
-        XWarpPointer (
-            GDK_DISPLAY (),
-            None,
-            GDK_ROOT_WINDOW (),
-            0, 0, 0, 0,
+        gdk_display_warp_pointer (
+            gtk_widget_get_display (GTK_WIDGET (circular_application_menu)),
+            gtk_widget_get_screen (GTK_WIDGET (circular_application_menu)),
             private->view_width / 2,
             private->view_height / 2);
 
@@ -381,7 +389,10 @@ _ca_circular_application_menu_set_property (GObject* object, guint param_id, con
  * Returns: a GObject gpointer to a newly constructed object.
  **/
 static GObject*
-_ca_circular_application_menu_constructor (GType type, guint n_construct_params, GObjectConstructParam* construct_params)
+_ca_circular_application_menu_constructor (
+	GType type,
+	guint n_construct_params,
+	GObjectConstructParam* construct_params)
 {
     GObject* object;
     CaCircularApplicationMenuPrivate* private;
@@ -448,12 +459,6 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
                     strcpy(emblems, passed_emblem);
                 }
 
-                /* Assign the default emblem if none has been specified. */
-                if (strlen(emblems) == 0)
-                {
-                    strcpy(emblems, "./pixmaps/gnome-emblem-normal.png:./pixmaps/gnome-emblem-prelight.png");
-                }
-
                 /* Update the root menu emblem. */
                 _ca_circular_applications_menu_update_emblem(CA_CIRCULAR_APPLICATION_MENU(object), emblems);
 
@@ -477,9 +482,9 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
     }
 
 	/* Assign the fade tick. */
-    private->_fade_timer = gtk_timeout_add(
+    private->_fade_timer = g_timeout_add(
 		FADE_TIMER_INTERVAL,
-		(GtkFunction)_ca_circular_application_menu_on_fade_tick,
+		_ca_circular_application_menu_on_fade_tick,
 		(gpointer)object);
 
 	/* Assign the default offset. */
@@ -518,7 +523,7 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
         /* Work out the hypotenuse so a square image fits onto a tab. */
         hypotenuse = MAX(private->icon_width * private->icon_width, private->icon_height * private->icon_height);
 
-		/* Use the smaller side as not worried about about any overlap. */
+		/* Use the smaller side as not worried about any overlap. */
         private->normal_iconsize = MAX(private->icon_width, private->icon_height);
 
         private->tab_width =
@@ -545,8 +550,9 @@ _ca_circular_application_menu_constructor (GType type, guint n_construct_params,
  * Generated 'event' caused by a widget being destroyed.
  **/
 static void
-_ca_circular_application_menu_destroy(GtkObject* object)
+_ca_circular_application_menu_destroy(GtkWidget* object)
 {
+	g_print("_ca_circular_application_menu_destroy\n");
     CaCircularApplicationMenu* circular_application_menu;
     CaCircularApplicationMenuPrivate* private;
 
@@ -575,8 +581,8 @@ _ca_circular_application_menu_destroy(GtkObject* object)
     }
 
     /* Call base functionality. */
-    if (GTK_OBJECT_CLASS (parent_class)->destroy)
-        (*GTK_OBJECT_CLASS (parent_class)->destroy) (object);
+    if (GTK_WIDGET_CLASS (parent_class)->destroy)
+        (*GTK_WIDGET_CLASS (parent_class)->destroy) (object);
 }
 
 /**
@@ -623,22 +629,27 @@ static void
 _ca_circular_application_menu_class_init (CaCircularApplicationMenuClass* klass)
 {
     GObjectClass* gobject_class;
-    GtkObjectClass* object_class;
+//    GtkObjectClass* object_class;
     GtkWidgetClass* widget_class;
 
     parent_class = g_type_class_peek_parent (klass);
 
     gobject_class = G_OBJECT_CLASS (klass);
-    object_class = GTK_OBJECT_CLASS (klass);
+//    object_class = GTK_OBJECT_CLASS (klass);
     widget_class = GTK_WIDGET_CLASS (klass);
 
     gobject_class->constructor = _ca_circular_application_menu_constructor;
-    gobject_class->set_property = _ca_circular_application_menu_set_property;
 
-    object_class->destroy = _ca_circular_application_menu_destroy;
+    gobject_class->set_property = _ca_circular_application_menu_set_property;
 
-    widget_class->expose_event = _ca_circular_application_menu_expose;
-    widget_class->size_request = _ca_circular_application_menu_size_request;
+//    object_class->destroy = _ca_circular_application_menu_destroy; 
+    widget_class->destroy = _ca_circular_application_menu_destroy; 
+
+    widget_class->draw = _ca_circular_application_menu_draw;
+
+    widget_class->get_preferred_width = _ca_circular_application_menu_get_preferred_width;
+    widget_class->get_preferred_height = _ca_circular_application_menu_get_preferred_height;
+
     widget_class->button_press_event = _ca_circular_application_menu_button_press;
     widget_class->button_release_event = _ca_circular_application_menu_button_release;
     widget_class->key_release_event = _ca_circular_application_menu_key_release;
@@ -747,7 +758,7 @@ _ca_circular_application_menu_class_init (CaCircularApplicationMenuClass* klass)
 static void
 _ca_circular_application_menu_init (CaCircularApplicationMenu* widget)
 {
-    GTK_WIDGET_SET_FLAGS (GTK_WIDGET(widget), GTK_CAN_FOCUS);   /* Required to receive key events. */
+    gtk_widget_set_can_focus (GTK_WIDGET(widget), TRUE); /* Required to receive key events. */
 
     /* Add additional events which are missing from the base widget. */
     gtk_widget_add_events (
@@ -762,27 +773,24 @@ _ca_circular_application_menu_init (CaCircularApplicationMenu* widget)
 }
 
 /**
- * _ca_circular_application_menu_expose:
+ * _ca_circular_application_menu_draw:
  * @widget: a GtkWidget pointer to the current widget.
- * @event: a pointer to the current event structure.
+ * @cairo_t:
+ * @data:
  *
- * Generated 'expose_event' caused by all or part of a window becoming visible and needing to be redrawn.
+ * 
  *
  * Returns: TRUE if the event is handled; otherwise FALSE.
  **/
 static gboolean
-_ca_circular_application_menu_expose (GtkWidget* widget, GdkEventExpose* event)
+_ca_circular_application_menu_draw (GtkWidget* widget, cairo_t* cr, gpointer data)
 {
     CaCircularApplicationMenu* circular_application_menu;
     CaCircularApplicationMenuPrivate* private;
-    cairo_t* cr;
     gint y;
 
     circular_application_menu = CA_CIRCULAR_APPLICATION_MENU(widget);
     private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
-
-    /* get a cairo_t */
-    cr = gdk_cairo_create (widget->window);
 
     cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
     /*cairo_set_fill_rule (cr, CAIRO_FILL_RULE_WINDING); */
@@ -829,13 +837,12 @@ _ca_circular_application_menu_expose (GtkWidget* widget, GdkEventExpose* event)
 
     cairo_rectangle (
         cr,
-        event->area.x,
-        event->area.y,
-        event->area.width,
-        event->area.height);
+        0,
+        0,
+        private->view_width,
+        private->view_height);
 
-    cairo_clip (cr);
-
+    cairo_clip (cr);
 	/* Render the circular-application-menu to a cairo context. */
     _ca_circular_application_menu_render (circular_application_menu, cr);
 
@@ -905,8 +912,6 @@ _ca_circular_application_menu_expose (GtkWidget* widget, GdkEventExpose* event)
             cr);
     }
 
-    cairo_destroy (cr);
-
     return FALSE;
 }
 
@@ -926,6 +931,44 @@ _ca_circular_application_menu_size_request(GtkWidget* widget, GtkRequisition* re
 
     requisition->width = private->view_width;
     requisition->height = private->view_height;
+}
+
+/**
+ * _ca_circular_application_menu_get_preferred_width:
+ * @widget: a GtkWidget pointer to the current widget.
+ * @minimal_width:
+ * @natural_width:
+ *
+ * Desciption.
+ **/
+static void
+_ca_circular_application_menu_get_preferred_width (
+	GtkWidget *widget,
+	gint      *minimal_width,
+	gint      *natural_width)
+{
+  GtkRequisition requisition;
+  _ca_circular_application_menu_size_request (widget, &requisition);
+  *minimal_width = *natural_width = requisition.width;
+}
+
+/**
+ * _ca_circular_application_menu_size_request:
+ * @widget: a GtkWidget pointer to the current widget.
+ * @minimal_height:
+ * @natural_height:
+ *
+ * Desciption.
+ **/
+static void
+_ca_circular_application_menu_get_preferred_height (
+	GtkWidget *widget,
+	gint      *minimal_height,
+	gint      *natural_height)
+{   
+  GtkRequisition requisition;
+  _ca_circular_application_menu_size_request (widget, &requisition);
+  *minimal_height = *natural_height = requisition.height;
 }
 
 /**
@@ -953,12 +996,12 @@ _ca_circular_application_menu_key_release(GtkWidget* widget, GdkEventKey* event)
 
     switch(event->keyval)
     {
-        case GDK_Escape:
+        case GDK_KEY_Escape:
             /* Quit out of application. */
             gtk_main_quit();
 
             return FALSE;
-        case GDK_Down:
+        case GDK_KEY_Down:
             /* Close the current menu. */
 
             _ca_circular_application_menu_close_menu(circular_application_menu, g_tabbed_fileleaf);
@@ -974,17 +1017,17 @@ _ca_circular_application_menu_key_release(GtkWidget* widget, GdkEventKey* event)
             }
 
             return FALSE;
-        case GDK_Home:
+        case GDK_KEY_Home:
             /* Move to the last opened fileleaf. */
             position_fileleaf = g_last_opened_fileleaf;
 
             break;
-        case GDK_End:
+        case GDK_KEY_End:
             /* Move to the root fileleaf. */
             position_fileleaf = g_root_fileleaf;
 
             break;
-        case GDK_Page_Up:
+        case GDK_KEY_Page_Up:
         {
             /* Move to the next fileleaf. */
             if (g_tabbed_fileleaf == g_last_opened_fileleaf)
@@ -994,7 +1037,7 @@ _ca_circular_application_menu_key_release(GtkWidget* widget, GdkEventKey* event)
 
             break;
         }
-        case GDK_Page_Down:
+        case GDK_KEY_Page_Down:
         {
             /* Move to the previous fileleaf. */
             if (g_tabbed_fileleaf == g_root_fileleaf)
@@ -1286,11 +1329,9 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
             if (FALSE == private->xwarp_mouse_pointer)
             {
                 /* Move that pointer! */
-                XWarpPointer (
-                    GDK_DISPLAY (),
-                    None,
-                    GDK_ROOT_WINDOW (),
-                    0, 0, 0, 0,
+                gdk_display_warp_pointer (
+                    gtk_widget_get_display (GTK_WIDGET (circular_application_menu)),
+                    gtk_widget_get_screen (GTK_WIDGET (circular_application_menu)),
                     private->view_width / 2,
                     private->view_height / 2);
             }
@@ -1321,14 +1362,14 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
             }
 
             /* Move the mouse pointer to the centre of the screen. */
+
+	
             if (FALSE == private->xwarp_mouse_pointer)
             {
                 /* Move that pointer! */
-                XWarpPointer (
-                    GDK_DISPLAY (),
-                    None,
-                    GDK_ROOT_WINDOW (),
-                    0, 0, 0, 0,
+                gdk_display_warp_pointer (
+                    gtk_widget_get_display (GTK_WIDGET (circular_application_menu)),
+                    gtk_widget_get_screen (GTK_WIDGET (circular_application_menu)),
                     private->view_width / 2,
                     private->view_height / 2);
             }
@@ -1336,53 +1377,27 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
         else if (fileitem->_type == GLYPH_FILE)
         {
             /* Launch file. */
-            GnomeDesktopItem* desktopitem;
+            GDesktopAppInfo* desktopitem;
+            GError* error = NULL;
+            GdkAppLaunchContext* context;
             const gchar* desktopfile;
 
             desktopfile = gmenu_tree_entry_get_desktop_file_path(GMENU_TREE_ENTRY(fileitem->_menutreeitem));
             g_assert(NULL != desktopfile);
 
-            desktopitem = gnome_desktop_item_new_from_file(
-                desktopfile,
-                GNOME_DESKTOP_ITEM_LOAD_ONLY_IF_EXISTS|GNOME_DESKTOP_ITEM_LOAD_NO_TRANSLATIONS,
-                NULL);
+			desktopitem = g_desktop_app_info_new_from_filename (desktopfile);
+			/* context = GDK_APP_LAUNCH_CONTEXT(gdk_app_launch_context_new ());  */
+			context = GDK_APP_LAUNCH_CONTEXT(gdk_display_get_app_launch_context (gtk_widget_get_display (GTK_WIDGET (circular_application_menu))));
+			g_app_info_launch (G_APP_INFO(desktopitem),NULL,G_APP_LAUNCH_CONTEXT(context),&error);
 
-            gnome_desktop_item_launch (desktopitem, NULL, GNOME_DESKTOP_ITEM_LAUNCH_ONLY_ONE, NULL);
-            
-            /*
-                The following code was an alternative to at this time non-working function call:
+			if (error)
+			{
+				g_warning ("Launching failed: %s\n", error->message);
+				g_clear_error (&error); /* g_error_free */
+			}
 
-                    gnome_desktop_item_launch (desktopitem, NULL, GNOME_DESKTOP_ITEM_LAUNCH_ONLY_ONE, NULL);
-
-                ... but it seems this function works now, and we don't must use execlp instead anymore.
-
-            {
-                gchar* app;
-                gchar* arg[255];
-                gchar* token;
-                gint i;
-
-                i = 0;
-                app = (gchar*)gnome_desktop_item_get_string(desktopitem, GNOME_DESKTOP_ITEM_EXEC);
-
-                token = strtok(app, " ");   // This is the first char of the string.
-                arg[i++] = token;
-
-                // Strip off any arguments.
-                while(token != NULL)
-                {
-                    token = strtok(NULL, " ");
-                    arg[i++] = token;
-                }
-
-                arg[i] = NULL;
-
-                // Launch the application.
-                execvp(arg[0], arg);
-            }
-            */
-
-            gnome_desktop_item_unref (desktopitem);
+			g_object_unref (desktopitem);
+			g_object_unref (context);		
 
             /* Quit out of application. */
             gtk_main_quit();
