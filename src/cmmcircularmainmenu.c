@@ -480,7 +480,7 @@ _ca_circular_application_menu_constructor (
                 {
                     strcpy(emblems, passed_emblem);
                 }
-g_print("dfsdfsd %s\n", emblems);
+
                 /* Update the root menu emblem. */
                 _ca_circular_applications_menu_update_emblem(CA_CIRCULAR_APPLICATION_MENU(object), emblems);
 

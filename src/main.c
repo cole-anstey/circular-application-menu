@@ -141,8 +141,12 @@ main (int argc, char **argv)
     }
     screen = gdk_screen_get_default ();
 
-    window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+    /* GTK_WINDOW_TOPLEVEL stops the bars from rendering in Ubuntu. */
+    window = gtk_window_new (GTK_WINDOW_POPUP);
 
+    /* Required for Ubuntu; not for Debian. */
+    gtk_widget_set_app_paintable(window, TRUE);
+    
     /* Assign an alpha colormap to the window. */
     screen = gtk_widget_get_screen (GTK_WIDGET (window)); // screen = gdk_screen_get_default ();
     visual = gdk_screen_get_rgba_visual (screen);

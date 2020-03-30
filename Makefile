@@ -42,6 +42,7 @@ clean:
 
 install:
 	install -D -m0755 $(PROGRAM) $(DESTDIR)/usr/bin/$(PROGRAM)	
+	install -D -m0755 $(PROGRAM:=.desktop) $(DESTDIR)/usr/share/applications/
 	install -v -m0755 -d $(DESTDIR)/usr/share/$(PROGRAM)/pixmaps/
 	install -v -m0755 $(PROGRAM:=.png) -t $(DESTDIR)/usr/share/$(PROGRAM)/
 	install -v -m0755 $(IMAGES_INSTALL:.svg=.png) -t $(DESTDIR)/usr/share/$(PROGRAM)/pixmaps/
@@ -49,6 +50,7 @@ install:
 uninstall:
 	rm -r $(DESTDIR)/usr/bin/$(PROGRAM)
 	rm -r $(DESTDIR)/usr/share/$(PROGRAM)
+	rm -r $(DESTDIR)/usr/share/applications/$(PROGRAM:=.desktop)
 
 circularmainmenu:	$(OBJS)
 

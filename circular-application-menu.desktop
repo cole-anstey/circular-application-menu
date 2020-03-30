@@ -1,9 +1,9 @@
 [Desktop Entry]
 Version=1.0
 Name=Circular-Application-Menu
-Exec=circular-main-menu
+Exec=/usr/bin/circular-application-menu
 Terminal=false
 X-MultipleArgs=false
 Type=Application
-Icon=circular-application-menu
+Icon=/usr/share/circular-application-menu/circular-application-menu.png
 Categories=Utility;

@@ -10,14 +10,11 @@ This is a circular-application-menu (C-A-M) prototype mirroring the same structu
 
 http://en.wikipedia.org/wiki/Pie_menu
 
-YouTube Videos of C-A-M In Use
+## YouTube Videos of C-A-M In Use
 
 http://www.youtube.com/watch?v=nXh1Tm24kTE
-
 http://www.youtube.com/watch?v=mNyLu6JoUX8
-
 http://www.youtube.com/watch?v=5yvLfUFHuCc
-
 http://www.youtube.com/watch?v=kzV44KmLJrA
 
 ## Updated
@@ -61,13 +58,12 @@ This project is only maintained periodically and no further contributions will b
 ## Installation
 
 ~~~bash
-svn checkout http://circular-application-menu.googlecode.com/svn/trunk/ circular-application-menu
+git clone https://github.com/cole-anstey/circular-application-menu.git
 
 cd circular-application-menu
 
 make
-
-su -c "install -m755 circular-main-menu /usr/bin" or sudo install -m755 circular-main-menu /usr/bin
+make install
 ~~~
 
 ## Usage:
@@ -143,12 +139,9 @@ Change the existing 'Main Menu' to Alt+F3:
 
 ## Miscellaneous Information
 
-You used to be able to get a Debian pkg from http://www.getdeb.net/app/Circular+Application+Menu. It's no longer available though I'll leave the link up for posterity.
 C-A-M receives a mention in the September 2008 issue of the 'LINUX Magazine'.
 Someone (not me) has dugg C-A-M !!! http://digg.com/linux_unix/Awesome_circular_application_menu_Google_Code
 My other project which I used to work on quite a lot is available at http://curlyankles.sourceforge.net/.
-
-Note the blur plugin is not enabled on the system I took the screenshots from. http://circular-application-menu.googlecode.com/svn/trunk/images/one.png http://circular-application-menu.googlecode.com/svn/trunk/images/two.png
 
 ## Project Information
 License: GNU GPL v2
