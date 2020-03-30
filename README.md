@@ -20,8 +20,9 @@ http://www.youtube.com/watch?v=5yvLfUFHuCc
 
 http://www.youtube.com/watch?v=kzV44KmLJrA
 
+[Debian (buster) gtk-3.0](images/three-gtk-3.0.png)
 
-[Debian gtk-3.0](images/three-gtk-3.0.png)
+[Ubuntu (Eoan Ermine) gtk-3.0](images/four-gtk-3.0.png)
 
 ## Updated
 
