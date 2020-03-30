@@ -41,8 +41,9 @@ clean:
 	rm -f src/cmmstockpixbufs.*c
 
 install:
-	install -D -m0755 $(PROGRAM) $(DESTDIR)/usr/bin/$(PROGRAM)
+	install -D -m0755 $(PROGRAM) $(DESTDIR)/usr/bin/$(PROGRAM)	
 	install -v -m0755 -d $(DESTDIR)/usr/share/$(PROGRAM)/pixmaps/
+	install -v -m0755 $(PROGRAM:=.png) -t $(DESTDIR)/usr/share/$(PROGRAM)/
 	install -v -m0755 $(IMAGES_INSTALL:.svg=.png) -t $(DESTDIR)/usr/share/$(PROGRAM)/pixmaps/
 
 uninstall:
