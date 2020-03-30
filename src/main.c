@@ -78,6 +78,7 @@ main (int argc, char **argv)
     gboolean warp_mouse = FALSE;
     gboolean glyph_size = 3;
     gboolean blur_off = FALSE;
+    gboolean z_order = FALSE;
     gchar* emblem = "/usr/share/circular-application-menu/pixmaps/gnome-emblem-normal.png:/usr/share/circular-application-menu/pixmaps/gnome-emblem-prelight.png";
     gboolean render_reflection = FALSE;
     gboolean render_tabbed_only = FALSE;
@@ -90,7 +91,8 @@ main (int argc, char **argv)
         { "blur-off", 'b', 0, G_OPTION_ARG_NONE, &blur_off, "Stops the blur from underneath the menu.", NULL },
         { "emblem", 'e', 0, G_OPTION_ARG_STRING, &emblem, "Specifies the (colon separated) emblems to use for the root menu [E: ./pixmaps/emblem-normal.png:./pixmaps/emblem-prelight.png].", NULL },
         { "render-reflection", 'r', 0, G_OPTION_ARG_NONE, &render_reflection, "Stops the reflection from being rendered.", NULL },
-        { "render-tabbed-only", 't', 0, G_OPTION_ARG_NONE, &render_tabbed_only, "Only renders the currently tabbed menu.", NULL },        
+        { "render-tabbed-only", 't', 0, G_OPTION_ARG_NONE, &render_tabbed_only, "Only renders the currently tabbed menu.", NULL },
+        { "z-order", 'z', 0, G_OPTION_ARG_NONE, &z_order, "Overrides the z-order of CAM.", NULL },
         { NULL }
     };
 
@@ -139,10 +141,22 @@ main (int argc, char **argv)
     {
         g_message(_("The circular-main-menu only displays correctly with composited desktops."));
     }
+
     screen = gdk_screen_get_default ();
 
-    /* GTK_WINDOW_TOPLEVEL stops the bars from rendering in Ubuntu. */
-    window = gtk_window_new (GTK_WINDOW_POPUP);
+    /* 
+    GTK_WINDOW_TOPLEVEL: stops the menu and side launcher bar from rendering in Ubuntu.
+    GTK_WINDOW_POPUP:    stops CAM from rendring below XFCE bottom launcher bar.
+    */
+    GtkWindowType type = GTK_WINDOW_TOPLEVEL;   /* I like Debian and XFCE! */
+
+    if (TRUE == z_order)
+    {
+        /* Use the compiz blur plugin to blur underneath the menus which makes the rendering clearer. */
+        type = GTK_WINDOW_POPUP;
+    }
+
+    window = gtk_window_new (type);
 
     /* Required for Ubuntu; not for Debian. */
     gtk_widget_set_app_paintable(window, TRUE);

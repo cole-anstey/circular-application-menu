@@ -13,9 +13,15 @@ http://en.wikipedia.org/wiki/Pie_menu
 ## YouTube Videos of C-A-M In Use
 
 http://www.youtube.com/watch?v=nXh1Tm24kTE
+
 http://www.youtube.com/watch?v=mNyLu6JoUX8
+
 http://www.youtube.com/watch?v=5yvLfUFHuCc
+
 http://www.youtube.com/watch?v=kzV44KmLJrA
+
+
+[Debian gtk-3.0](images/three-gtk-3.0.png)
 
 ## Updated
 
@@ -55,6 +61,15 @@ This project is only maintained periodically and no further contributions will b
 * gtk+ 3.0
 * compiz-devel
 
+## Dependancies
+
+~~~bash
+imagemagick
+inkscape
+libgtk-3-dev
+libgnome-menu-3-dev
+~~~
+
 ## Installation
 
 ~~~bash
@@ -70,35 +85,43 @@ make install
 
     circular-main-menu [OPTION...] - circular-application-menu.
 
-Help Options:
+### Help Options:
 
     -?, --help Show help options
 
-Application Options:
+### Application Options:
 
-    -h, --hide-preview
-
-        Hides the menu preview displayed when the mouse is over a menu.
-
-    -w, --warp-mouse-off
-
-        Stops the mouse from warping to the centre of the screen whenever a menu is shown.
-
-    -g, --glyph-size=S
-
-        The size of the glyphs [S: 1=small 2=medium 3=large (default)].
-
-    -b, --blur-off
-
-        Stops the blur from underneath the menu.
-
-    -e, --emblem=E
-
-        Specifies the emblems (colon separated) to use for the root menu [E: ./pixmaps/ubuntu-emblem-normal.png:./pixmaps/ubuntu-emblem-prelight.png].
-
-    -t, --render-tabbed-only
-
-        Only shows the currently tabbed menu.
+~~~bash
+-h, --hide-preview
+~~~
+Hides the menu preview displayed when the mouse is over a menu.
+~~~bash
+-w, --warp-mouse-off
+~~~
+Stops the mouse from warping to the centre of the screen whenever a menu is shown.
+~~~bash
+-g, --glyph-size=S
+~~~
+The size of the glyphs [S: 1=small 2=medium 3=large (default)].
+~~~bash
+-b, --blur-off
+~~~
+Stops the blur from underneath the menu.
+~~~bash
+-e, --emblem=E
+~~~
+Specifies the emblems (colon separated) to use for the root menu [E: ./pixmaps/ubuntu-emblem-normal.png:./pixmaps/ubuntu-emblem-prelight.png].
+~~~bash
+-t, --render-tabbed-only
+~~~
+Only shows the currently tabbed menu.
+~~~bash
+-z, --z-order
+~~~
+Overrides the z-order of CAM.
+i.e.
+The default uses `GTK_WINDOW_TOPLEVEL` that stops the menu and side launcher bar from rendering within Ubuntu.  
+Specifying the flag uses `GTK_WINDOW_POPUP` that stops CAM from rendering below the XFCE bottom launcher bar.
 
 ## Adding as a panel launcher
 
