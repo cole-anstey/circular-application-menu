@@ -1,0 +1,5 @@
+*.o
+*.xpm
+.vscode
+circular-application-menu
+*.png

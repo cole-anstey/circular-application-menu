@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
+
 <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
@@ -13,7 +14,7 @@
    height="50"
    id="svg2"
    sodipodi:version="0.32"
-   inkscape:version="0.46"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)"
    version="1.0"
    sodipodi:docname="reflection.svg"
    inkscape:output_extension="org.inkscape.output.svg.inkscape"
@@ -115,16 +116,17 @@
      objecttolerance="10"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1"
-     inkscape:cx="-221.8078"
-     inkscape:cy="666.15675"
+     inkscape:zoom="0.35355339"
+     inkscape:cx="385.94536"
+     inkscape:cy="446.81955"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
      inkscape:window-width="768"
      inkscape:window-height="711"
      inkscape:window-x="3"
-     inkscape:window-y="29" />
+     inkscape:window-y="31"
+     inkscape:window-maximized="0" />
   <metadata
      id="metadata7">
     <rdf:RDF>
@@ -220,17 +222,19 @@
        transform="matrix(0.8506317,-0.5257621,0.5257621,0.8506317,0,0)" />
     <text
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        x="-137.875"
        y="-653"
        id="text3167"><tspan
          sodipodi:role="line"
          id="tspan3169"
          x="-137.875"
-         y="-653">Its here, you just can't see it !!</tspan><tspan
+         y="-653"
+         style="font-size:40px;line-height:1.25">Its here, you just can't see it !!</tspan><tspan
          sodipodi:role="line"
          x="-137.875"
          y="-603"
-         id="tspan3171">Change the fill alpha of the enclosing rectangle.</tspan></text>
+         id="tspan3171"
+         style="font-size:40px;line-height:1.25">Change the fill alpha of the enclosing rectangle.</tspan></text>
   </g>
 </svg>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+    <gresource prefix="/com/circular-application-menu">
+        <file>pixmaps/close-menu-normal.png</file>
+        <file>pixmaps/open-sub-menu-normal.png</file>
+        <file>pixmaps/reflection.png</file>
+        <file>pixmaps/close-menu-prelight.png</file>
+        <file>pixmaps/open-sub-menu-prelight.png</file>
+        <file>pixmaps/debian-emblem-normal.png</file>
+        <file>pixmaps/gnome-emblem-normal.png</file>
+        <file>pixmaps/ubuntu-emblem-prelight.png</file>
+        <file>pixmaps/debian-emblem-prelight.png</file>
+        <file>pixmaps/gnome-emblem-prelight.png</file>
+        <file>pixmaps/ubuntu-emblem-normal.png</file>
+    </gresource>
+</gresources>

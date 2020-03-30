@@ -20,7 +20,7 @@
  */
 #include <gtk/gtk.h>
 #include <gdk/gdkx.h>
-#include <libgnomevfs/gnome-vfs.h>
+//include <libgnomevfs/gnome-vfs.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -29,7 +29,7 @@
 #include <string.h>
 
 #define GMENU_I_KNOW_THIS_IS_UNSTABLE
-#include <gnome-menus/gmenu-tree.h>
+#include <gnome-menus-3.0/gmenu-tree.h>
 
 #include "cmmcircularmainmenu.h"
 
@@ -78,7 +78,7 @@ main (int argc, char **argv)
     gboolean warp_mouse = FALSE;
     gboolean glyph_size = 3;
     gboolean blur_off = FALSE;
-    gchar* emblem = "/usr/share/circular-application-menu/pixmaps/default-emblem-normal.png:/usr/share/circular-application-menu/pixmaps/default-emblem-prelight.png";
+    gchar* emblem = "/usr/share/circular-application-menu/pixmaps/gnome-emblem-normal.png:/usr/share/circular-application-menu/pixmaps/gnome-emblem-prelight.png";
     gboolean render_reflection = FALSE;
     gboolean render_tabbed_only = FALSE;
 
@@ -95,15 +95,26 @@ main (int argc, char **argv)
     };
 
     /* Initialise. */
-    gtk_init (&argc, &argv);
-    gnome_vfs_init();
+    gtk_init(&argc, &argv);
 
-    tree = gmenu_tree_lookup ("applications.menu", GMENU_TREE_FLAGS_NONE);
-    g_assert (tree != NULL);
+    /*
+    https://developer.gnome.org/menu-spec/
+    */
+    const gchar* application_menu =  "applications.menu";
+    g_info(_("Loading menu tree '%s'."), XDG_CONFIG_DIRS"/menus/"XDG_MENU_PREFIX"applications.menu");
 
+    tree = gmenu_tree_new (application_menu, GMENU_TREE_FLAGS_NONE);
+    g_assert (NULL != tree);
+
+    if (!gmenu_tree_load_sync (tree, &error))
+    {
+        g_warning (_("Loading the tree failed: %s\n"), error->message);
+        return -1;
+    }
+            
     root = gmenu_tree_get_root_directory (tree);
 
-    if (root == NULL)
+    if (NULL == root)
     {
         g_warning (_("The menu tree is empty."));
     }
@@ -117,14 +128,14 @@ main (int argc, char **argv)
         (glyph_size < 1) ||
         (glyph_size > 3))
     {
-        g_print (_("Option parsing failed: %s\n"), error->message);
+        g_warning(_("Option parsing failed: %s\n"), error->message);
 
         return -1;
     }
 
     g_option_context_free(optioncontext);
 
-    if (FALSE == gdk_display_supports_composite(gdk_display_get_default()))
+    if (FALSE == gdk_screen_is_composited(gdk_display_get_default_screen(gdk_display_get_default())))
     {
         g_message(_("The circular-main-menu only displays correctly with composited desktops."));
     }
@@ -136,8 +147,10 @@ main (int argc, char **argv)
     screen = gtk_widget_get_screen (GTK_WIDGET (window)); // screen = gdk_screen_get_default ();
     visual = gdk_screen_get_rgba_visual (screen);
 
-    if (visual == NULL)
+    if (NULL == visual)
+    {
         visual = gdk_screen_get_system_visual (screen);
+    }
 
     gtk_widget_set_visual (window, visual);
     /*

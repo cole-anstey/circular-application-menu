@@ -1,46 +1,60 @@
-PROGRAM=circular-main-menu
+PROGRAM=circular-application-menu
 OBJS = \
 	src/main.o \
 	src/cmmcircularmainmenu.o
 BIN_PATH=/usr/local/bin	
 GROUP=users
 INCLUDES=/opt/gnome/include
-
 CC=gcc
-CFLAGS=-g -O2 -DDEBUG -I$(INCLUDES)
-#CFLAGS+=-fdump-rtl-expand # callgraph generation
-CFLAGS+=`pkg-config --cflags gtk+-3.0 gio-2.0 gnome-vfs-2.0`
+CFLAGS=-g -O2 -DDEBUG -DXDG_CONFIG_DIRS='"$(XDG_CONFIG_DIRS)"' -DXDG_MENU_PREFIX='"$(XDG_MENU_PREFIX)"' -I$(INCLUDES)
+CFLAGS+=`pkg-config --cflags gtk+-3.0 gio-unix-2.0 libgnome-menu-3.0`
 CFLAGS+=-DGTK_DISABLE_SINGLE_INCLUDES
 CFLAGS+=-DGDK_DISABLE_DEPRECATED
 CFLAGS+=-DGSEAL_ENABLE
 
-LIBS=`pkg-config --libs gtk+-3.0 gnome-vfs-2.0` -lgnome-menu
+LIBS=`pkg-config --libs gtk+-3.0  gio-unix-2.0 libgnome-menu-3.0` -lX11 -lm
 
-IMAGES = \
+# XPMs do not support transparency only image masks.
+IMAGES_CONVERT= \
 	pixmaps/close-menu-normal.svg \
-	pixmaps/close-menu-prelight.svg
+	pixmaps/open-sub-menu-normal.svg \
+	pixmaps/reflection.svg \
+	pixmaps/close-menu-prelight.svg \
+	pixmaps/open-sub-menu-prelight.svg \
+	pixmaps/debian-emblem-normal.svg
+IMAGE_CONVERSION=mogrify -background none -format png --
 
-all: clean $(OBJS)
+IMAGES_INSTALL= \
+	pixmaps/gnome-emblem-normal.svg \
+	pixmaps/ubuntu-emblem-prelight.svg \
+	pixmaps/debian-emblem-prelight.svg \
+	pixmaps/gnome-emblem-prelight.svg \
+	pixmaps/ubuntu-emblem-normal.svg
+
+all: clean cmmstockpixbufs.c $(OBJS)
+#all: clean $(OBJS)
 	$(CC) $(DEFINES) $(CFLAGS) $(OBJS) -o $(PROGRAM) $(LIBS)
 
-clean: 
+clean:
 	rm -f src/*.o $(PROGRAM)
+	rm -f pixmaps/*.png
+	rm -f src/cmmstockpixbufs.*c
 
 install:
 	install -D -m0755 $(PROGRAM) $(DESTDIR)/usr/bin/$(PROGRAM)
+	install -v -m0755 -d $(DESTDIR)/usr/share/$(PROGRAM)/pixmaps/
+	install -v -m0755 $(IMAGES_INSTALL:.svg=.png) -t $(DESTDIR)/usr/share/$(PROGRAM)/pixmaps/
 
 uninstall:
 	rm -r $(DESTDIR)/usr/bin/$(PROGRAM)
+	rm -r $(DESTDIR)/usr/share/$(PROGRAM)
 
-circularmainmenu:	$(OBJS) 
+circularmainmenu:	$(OBJS)
 
-gdk_pixbuf_csource=gdk-pixbuf-csource
-
-cmmstockpixbufs.h: 
-	$(gdk_pixbuf_csource) --raw --build-list $(IMAGES) > src/cmmstockpixbufs.h
-#        $(gdk_pixbuf_csource) --raw --build-list $(IMAGES) > src/cmmclose-menu-normal.h
-#        $(gdk_pixbuf_csource) --raw --build-list $(IMAGES) > src/cmmclose-menu-prelight.h
-
+cmmstockpixbufs.c: 
+	$(IMAGE_CONVERSION) $(IMAGES_INSTALL)
+	$(IMAGE_CONVERSION) $(IMAGES_CONVERT)
+	glib-compile-resources --target=src/cmmstockpixbufs.c --generate pixmaps/circular-application-menu.gresource.xml
 
 rpm: dist
 	rpmbuild -ta $(distdir).tar.gz

@@ -17,6 +17,8 @@
  * Boston, MA 02111-1307, USA.
  *
  * See http://code.google.com/p/circular-application-menu/
+ *     https://github.com/GNOME/gnome-menus/blob/mainline/libmenu/gmenu-tree.h
+ *     https://github.com/GNOME/gnome-menus/blob/mainline/libmenu/gmenu-tree.c
  */
 #include "cmmcircularmainmenu.h"
 
@@ -29,18 +31,19 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../pixmaps/close-menu-prelight.h"
-#include "../pixmaps/close-menu-normal.h"
-#include "../pixmaps/open-sub-menu-prelight.h"
-#include "../pixmaps/open-sub-menu-normal.h"
-#include "../pixmaps/reflection.h"
+#include "cmmstockpixbufs.c"
+
+//#define RESOURCE_PATH   "resource:///com/circular-application-menu/pixmaps/"
+#define RESOURCE_PATH   "/com/circular-application-menu/pixmaps/"
+
+static gint _ca_circular_application_menu_private_offset;
 
 /* Base functions. */
 static void _ca_circular_application_menu_class_init (CaCircularApplicationMenuClass* klass);
 static void _ca_circular_application_menu_init (CaCircularApplicationMenu* widget);
 static GObject* _ca_circular_application_menu_constructor (GType type, guint n_construct_params, GObjectConstructParam* construct_params);
 static void _ca_circular_application_menu_destroy(GtkWidget* object);
-static gboolean _ca_circular_application_menu_draw(GtkWidget* widget, cairo_t *cr, gpointer data);
+static gboolean _ca_circular_application_menu_draw(GtkWidget* widget, cairo_t *cr);
 static void _ca_circular_application_menu_size_request(GtkWidget* widget, GtkRequisition* requisition);
 static void _ca_circular_application_menu_get_preferred_width (GtkWidget *widget, gint *minimal_width, gint *natural_width);
 static void _ca_circular_application_menu_get_preferred_height (GtkWidget *widget, gint *minimal_height, gint *natural_height);
@@ -71,12 +74,13 @@ static gdouble _ca_circular_application_menu_calculate_angle_offset(gdouble angl
 static gdouble _ca_circular_application_menu_angle_between_points(gdouble x1, gdouble y1, gdouble x2, gdouble y2);
 static gboolean _ca_circular_application_menu_is_angle_between_angles(gdouble angle, gdouble angle_lower, gdouble angle_higher);
 static void _ca_circular_applications_menu_get_segment_angles(CaFileItem* fileitem, gint radius, gdouble* from_angle, gdouble* to_angle);
-static GdkPixbuf* _ca_circular_applications_menu_get_pixbuf_from_name(const char* name, gint width, gint height);
+static GdkPixbuf* _ca_circular_applications_menu_get_pixbuf_from_name(GtkIconInfo* icon_info, gint width, gint height);
 static const gchar* _ca_circular_applications_menu_imagefinder_path(const gchar* path);
 static void _ca_circular_applications_menu_update_highlight(CaCircularApplicationMenu* circular_application_menu, gint x, gint y);
 static gint _ca_circular_applications_menu_get_centre_iconsize(CaCircularApplicationMenu* circular_application_menu, CaFileLeaf* fileleaf);
 static void _ca_circular_applications_menu_update_emblem(CaCircularApplicationMenu* circular_application_menu, gchar* emblems);
 static void _ca_circular_application_menu_render_reflection(CaCircularApplicationMenu* circular_application_menu, cairo_t* cr);
+static void _ca_circular_application_menu_device_warp(CaCircularApplicationMenu* circular_application_menu);
 
 typedef struct _CaCircularApplicationMenuPrivate CaCircularApplicationMenuPrivate;
 
@@ -87,11 +91,11 @@ struct _CaCircularApplicationMenuPrivate
     gint view_width;
     gint view_height;
     gint _fade_timer;
-	gint icon_width;
-	gint icon_height;
-	gint normal_iconsize;
-	gint tab_width;
-	gint tab_height;
+    gint icon_width;
+    gint icon_height;
+    gint normal_iconsize;
+    gint tab_width;
+    gint tab_height;
     GdkPixbuf* light_pixbuf;
 
     /*< Options >*/
@@ -103,8 +107,6 @@ struct _CaCircularApplicationMenuPrivate
     GdkPixbuf* emblem_prelight;
     gboolean render_tabbed_only;
 };
-
-#define CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE ((obj), CA_TYPE_CIRCULAR_APPLICATION_MENU, CaCircularApplicationMenuPrivate))
 
 static gchar* image_paths[] = {
     "/usr/share/pixmaps",
@@ -192,7 +194,7 @@ RGBA g_text_rgba                = { CRGB(255), CRGB(255), CRGB(255), 0.0,   1.0,
 
 /* Local data. */
 static GtkWidgetClass* parent_class = NULL;
-
+
 /* Properties. */
 enum
 {
@@ -214,6 +216,20 @@ static CaFileLeaf* g_current_fileleaf = NULL;
 static CaFileItem* g_current_fileitem = NULL;
 static GlyphType g_current_type = GLYPH_UNKNOWN;
 static CaFileLeaf* g_disassociated_fileleaf = NULL;
+
+/**
+ * _ca_circular_application_menu_get_instance_private:
+ * @circular_application_menu: A CaCircularApplicationMenu pointer to the circular-application-menu widget instance.
+ *
+ * Retrieves the corresponding widget klass private structure.
+ *
+ * Returns: A pointer to the CaCircularApplicationMenuPrivate structure.
+ **/
+static inline gpointer
+_ca_circular_application_menu_get_instance_private (CaCircularApplicationMenu* widget)
+{
+  return G_STRUCT_MEMBER_P (widget, _ca_circular_application_menu_private_offset);
+}
 
 /**
  * ca_circular_application_menu_new:
@@ -239,10 +255,13 @@ ca_circular_application_menu_new (
 {
     GObject* object;
 
+    GdkRectangle workarea = {0};
+    gdk_monitor_get_workarea(gdk_display_get_primary_monitor(gdk_display_get_default()), &workarea);
+
     object = g_object_new (
         ca_circular_application_menu_get_type(),
-        "width", gdk_screen_width(),
-        "height", gdk_screen_height(),
+        "width", workarea.width,
+        "height", workarea.height,
         "hide-preview", hide_preview,
         "warp-mouse", warp_mouse,
         "glyph-size", glyph_size,
@@ -271,19 +290,15 @@ ca_circular_application_menu(
     CaCircularApplicationMenuPrivate* private;
     CaFileLeaf* fileleaf;
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     fileleaf = ca_circular_application_menu_show_leaf(circular_application_menu, menutreedirectory, ROOT_LEAF, NULL, FALSE);
 
     /* Move the mouse pointer to the centre of the screen. */
     if (FALSE == private->xwarp_mouse_pointer)
     {
-        /* Move that pointer! */
-        gdk_display_warp_pointer (
-            gtk_widget_get_display (GTK_WIDGET (circular_application_menu)),
-            gtk_widget_get_screen (GTK_WIDGET (circular_application_menu)),
-            private->view_width / 2,
-            private->view_height / 2);
+        /* Move the pointer to the centre of the screen. */
+        _ca_circular_application_menu_device_warp(circular_application_menu);
 
         /* Update the highlighted item at the given coordinates. */
         _ca_circular_applications_menu_update_highlight(circular_application_menu, private->view_width / 2, private->view_height / 2);
@@ -305,7 +320,7 @@ _ca_circular_applications_menu_update_emblem(CaCircularApplicationMenu* circular
 {
     CaCircularApplicationMenuPrivate* private;
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     /* Split the two emblems and create the associated pixbufs. */
     if (emblems != NULL)
@@ -327,12 +342,16 @@ _ca_circular_applications_menu_update_emblem(CaCircularApplicationMenu* circular
             {
                 private->emblem_prelight = gdk_pixbuf_new_from_file(result, NULL);
             }
-        }
 
-        if ((private->emblem_normal == NULL) ||
-            (private->emblem_prelight == NULL))
+            if ((private->emblem_normal == NULL) ||
+                (private->emblem_prelight == NULL))
+            {
+                g_message("The emblems file '%s' could not be loaded, are the paths correct?", result);
+            }
+        }
+        else
         {
-            g_message("The emblems could not be loaded, are the paths correct?");
+            g_message("The emblems file was not specified");
         }
     }
 }
@@ -395,13 +414,16 @@ _ca_circular_application_menu_constructor (
 	GObjectConstructParam* construct_params)
 {
     GObject* object;
+    CaCircularApplicationMenu* circular_application_menu;
     CaCircularApplicationMenuPrivate* private;
     gint param;
+    GError* error = NULL;
 
     /* Call base functionality. */
     object = G_OBJECT_CLASS (parent_class)->constructor(type, n_construct_params, construct_params);
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(object);
+    circular_application_menu = CA_CIRCULAR_APPLICATION_MENU(object);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     private->emblem_normal = NULL;
     private->emblem_prelight = NULL;
@@ -458,7 +480,7 @@ _ca_circular_application_menu_constructor (
                 {
                     strcpy(emblems, passed_emblem);
                 }
-
+g_print("dfsdfsd %s\n", emblems);
                 /* Update the root menu emblem. */
                 _ca_circular_applications_menu_update_emblem(CA_CIRCULAR_APPLICATION_MENU(object), emblems);
 
@@ -493,14 +515,8 @@ _ca_circular_application_menu_constructor (
 
     /* Assign the icon size. */
     {
-        GdkScreen* screen;
-        GtkSettings* settings;
         GtkIconSize icon_size;
         gint hypotenuse;
-
-        /* Retrieve the icon size. */
-        screen = gtk_widget_get_screen (GTK_WIDGET(object));
-        settings = gtk_settings_get_for_screen (screen);
 
         switch(private->glyph_size)
         {
@@ -515,7 +531,7 @@ _ca_circular_application_menu_constructor (
             break;
         }
 
-        if (!gtk_icon_size_lookup_for_settings (settings, icon_size, &private->icon_width, &private->icon_height))
+        if (!gtk_icon_size_lookup (icon_size, &private->icon_width, &private->icon_height))
         {
             g_warning("Invalid icon size\n");
         }
@@ -536,7 +552,12 @@ _ca_circular_application_menu_constructor (
 			(RADIUS_SPACER + CLOSEST_TAB_CIRCLE_RADIUS + FARTHEST_TAB_CIRCLE_RADIUS));
 
         /* Load the light reflection pixbuf. */
-        private->light_pixbuf = gdk_pixbuf_new_from_inline (-1, reflection, FALSE, NULL);
+        if ((private->light_pixbuf = gdk_pixbuf_new_from_resource(RESOURCE_PATH"reflection.png", &error)) == NULL)
+        {
+            g_warning ("Resource not found: %s\n", error->message);
+            g_clear_error (&error); /* g_error_free */
+        }
+                
         g_assert(private->light_pixbuf != NULL);
     }
 
@@ -552,7 +573,6 @@ _ca_circular_application_menu_constructor (
 static void
 _ca_circular_application_menu_destroy(GtkWidget* object)
 {
-	g_print("_ca_circular_application_menu_destroy\n");
     CaCircularApplicationMenu* circular_application_menu;
     CaCircularApplicationMenuPrivate* private;
 
@@ -560,7 +580,7 @@ _ca_circular_application_menu_destroy(GtkWidget* object)
     g_return_if_fail (CA_IS_CIRCULAR_APPLICATION_MENU (object));
 
     circular_application_menu = CA_CIRCULAR_APPLICATION_MENU(object);
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(object);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     if (private->emblem_normal != NULL)
     {
@@ -582,7 +602,9 @@ _ca_circular_application_menu_destroy(GtkWidget* object)
 
     /* Call base functionality. */
     if (GTK_WIDGET_CLASS (parent_class)->destroy)
+    {
         (*GTK_WIDGET_CLASS (parent_class)->destroy) (object);
+    }
 }
 
 /**
@@ -613,7 +635,18 @@ ca_circular_application_menu_get_type(void)
             (GInstanceInitFunc) _ca_circular_application_menu_init,
         };
 
-        circular_application_menu_type = g_type_register_static (gtk_drawing_area_get_type(), "CaCircularApplicationMenu", &circular_application_menu_info, 0);
+        circular_application_menu_type = g_type_register_static (
+            gtk_drawing_area_get_type(), 
+            "CaCircularApplicationMenu", 
+            &circular_application_menu_info, 
+            0);
+
+        /* Install the widgets private struture. */
+        {
+            _ca_circular_application_menu_private_offset = g_type_add_instance_private(
+                circular_application_menu_type, 
+                sizeof (CaCircularApplicationMenuPrivate));
+        }        
     }
 
     return circular_application_menu_type;
@@ -629,20 +662,17 @@ static void
 _ca_circular_application_menu_class_init (CaCircularApplicationMenuClass* klass)
 {
     GObjectClass* gobject_class;
-//    GtkObjectClass* object_class;
     GtkWidgetClass* widget_class;
 
     parent_class = g_type_class_peek_parent (klass);
 
     gobject_class = G_OBJECT_CLASS (klass);
-//    object_class = GTK_OBJECT_CLASS (klass);
     widget_class = GTK_WIDGET_CLASS (klass);
 
     gobject_class->constructor = _ca_circular_application_menu_constructor;
 
     gobject_class->set_property = _ca_circular_application_menu_set_property;
 
-//    object_class->destroy = _ca_circular_application_menu_destroy; 
     widget_class->destroy = _ca_circular_application_menu_destroy; 
 
     widget_class->draw = _ca_circular_application_menu_draw;
@@ -744,8 +774,10 @@ _ca_circular_application_menu_class_init (CaCircularApplicationMenuClass* klass)
             FALSE,
             G_PARAM_WRITABLE|G_PARAM_CONSTRUCT_ONLY));
 
-    /* Install the widgets private struture. */
-    g_type_class_add_private (klass, sizeof (CaCircularApplicationMenuPrivate));
+  if (_ca_circular_application_menu_private_offset != 0)
+  {
+    g_type_class_adjust_private_offset (klass, &_ca_circular_application_menu_private_offset);
+  }
 }
 
 /**
@@ -775,25 +807,24 @@ _ca_circular_application_menu_init (CaCircularApplicationMenu* widget)
 /**
  * _ca_circular_application_menu_draw:
  * @widget: a GtkWidget pointer to the current widget.
- * @cairo_t:
- * @data:
- *
- * 
+ * @cairo_t: A cairo context to draw to.
  *
  * Returns: TRUE if the event is handled; otherwise FALSE.
  **/
 static gboolean
-_ca_circular_application_menu_draw (GtkWidget* widget, cairo_t* cr, gpointer data)
+_ca_circular_application_menu_draw (GtkWidget* widget, cairo_t* cr)
 {
     CaCircularApplicationMenu* circular_application_menu;
     CaCircularApplicationMenuPrivate* private;
     gint y;
 
+    g_return_val_if_fail(GTK_WIDGET(widget) != NULL, FALSE);
+    g_return_val_if_fail(CA_IS_CIRCULAR_APPLICATION_MENU(widget), FALSE);
+
     circular_application_menu = CA_CIRCULAR_APPLICATION_MENU(widget);
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     cairo_set_fill_rule (cr, CAIRO_FILL_RULE_EVEN_ODD);
-    /*cairo_set_fill_rule (cr, CAIRO_FILL_RULE_WINDING); */
 
     /* draw the background */
     cairo_set_operator (cr, CAIRO_OPERATOR_CLEAR);
@@ -842,7 +873,8 @@ _ca_circular_application_menu_draw (GtkWidget* widget, cairo_t* cr, gpointer dat
         private->view_width,
         private->view_height);
 
-    cairo_clip (cr);
+    cairo_clip (cr);
+    
 	/* Render the circular-application-menu to a cairo context. */
     _ca_circular_application_menu_render (circular_application_menu, cr);
 
@@ -882,13 +914,18 @@ _ca_circular_application_menu_draw (GtkWidget* widget, cairo_t* cr, gpointer dat
 
         if (g_current_type == GLYPH_FILE_MENU)
         {
-            name = gmenu_tree_directory_get_name(GMENU_TREE_DIRECTORY(g_current_fileitem->_menutreeitem));
-            comment = gmenu_tree_directory_get_comment(GMENU_TREE_DIRECTORY(g_current_fileitem->_menutreeitem));
+            name = gmenu_tree_directory_get_name(g_current_fileitem->_menutreeitem);
+            comment = gmenu_tree_directory_get_comment(g_current_fileitem->_menutreeitem);
         }
         else
         {
-            name = gmenu_tree_entry_get_name(GMENU_TREE_ENTRY(g_current_fileitem->_menutreeitem));
-            comment = gmenu_tree_entry_get_comment(GMENU_TREE_ENTRY(g_current_fileitem->_menutreeitem));
+            /* https://github.com/frida/glib/blob/master/gio/gdesktopappinfo.c */
+            GDesktopAppInfo* desktop_app_info;
+
+            desktop_app_info = gmenu_tree_entry_get_app_info(g_current_fileitem->_menutreeitem);
+
+            name = g_desktop_app_info_get_string(desktop_app_info, "Name");
+            comment = g_desktop_app_info_get_string(desktop_app_info, "Comment");
         }
 
         /* Name. */
@@ -925,9 +962,14 @@ _ca_circular_application_menu_draw (GtkWidget* widget, cairo_t* cr, gpointer dat
 static void
 _ca_circular_application_menu_size_request(GtkWidget* widget, GtkRequisition* requisition)
 {
+    CaCircularApplicationMenu* circular_application_menu;
     CaCircularApplicationMenuPrivate* private;
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(widget);
+    g_return_if_fail(GTK_WIDGET(widget) != NULL);
+    g_return_if_fail(CA_IS_CIRCULAR_APPLICATION_MENU(widget));
+
+    circular_application_menu = CA_CIRCULAR_APPLICATION_MENU(widget);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     requisition->width = private->view_width;
     requisition->height = private->view_height;
@@ -1102,12 +1144,27 @@ _ca_circular_application_menu_motion_notify(GtkWidget* widget, GdkEventMotion* e
     g_return_val_if_fail(event != NULL, FALSE);
 
     circular_application_menu = CA_CIRCULAR_APPLICATION_MENU(widget);
-
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(widget);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     if (event->is_hint)
+    {
         /* This function will cause another motion event arrive. */
-        gdk_window_get_pointer (event->window, &x, &y, &state);
+        GdkDisplay* display;
+        GdkDevice* device;
+
+        private = _ca_circular_application_menu_get_instance_private(circular_application_menu);    
+
+        //display = gdk_display_get_default();
+        display = gtk_widget_get_display (GTK_WIDGET (circular_application_menu));
+        device = gdk_seat_get_pointer(gdk_display_get_default_seat(display));    
+
+        gdk_window_get_device_position(
+            gtk_widget_get_window(widget), 
+            device,
+             &x, 
+             &y, 
+             &state);
+    }
     else
     {
         x = (gint)event->x;
@@ -1165,7 +1222,7 @@ _ca_circular_application_menu_motion_notify(GtkWidget* widget, GdkEventMotion* e
                 g_assert(g_disassociated_fileleaf == NULL);
                 g_disassociated_fileleaf = _ca_circular_application_menu_show_fileitem(
                     circular_application_menu, 
-                    GMENU_TREE_DIRECTORY(g_current_fileitem->_menutreeitem),
+                    g_current_fileitem->_menutreeitem,
                     GLYPH_FILE_MENU_CENTRE,
                     g_current_fileitem,
                     TRUE);
@@ -1198,9 +1255,13 @@ static gboolean
 _ca_circular_application_menu_button_press(GtkWidget* widget, GdkEventButton* event)
 {
     CaCircularApplicationMenu* circular_application_menu;
+ 
+    g_return_val_if_fail(GTK_WIDGET(widget) != NULL, FALSE);
+    g_return_val_if_fail(CA_IS_CIRCULAR_APPLICATION_MENU(widget), FALSE);
+    g_return_val_if_fail(event != NULL, FALSE);
 
     circular_application_menu = CA_CIRCULAR_APPLICATION_MENU(widget);
-
+ 
     if ((event->type == GDK_2BUTTON_PRESS) ||
         (event->type == GDK_3BUTTON_PRESS))
     {
@@ -1227,9 +1288,12 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
     CaFileLeaf* fileleaf;
     CaFileItem* fileitem;
 
-    circular_application_menu = CA_CIRCULAR_APPLICATION_MENU(widget);
+    g_return_val_if_fail(GTK_WIDGET(widget) != NULL, FALSE);
+    g_return_val_if_fail(CA_IS_CIRCULAR_APPLICATION_MENU(widget), FALSE);
+    g_return_val_if_fail(event != NULL, FALSE);
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(widget);
+    circular_application_menu = CA_CIRCULAR_APPLICATION_MENU(widget);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     /* Copy if changed during a 'motion-notify'. */
     fileleaf = g_current_fileleaf;
@@ -1291,7 +1355,7 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
 
             sub_fileleaf = _ca_circular_application_menu_show_fileitem(
                 circular_application_menu,
-                GMENU_TREE_DIRECTORY(fileitem->_menutreeitem),
+                fileitem->_menutreeitem,
                 GLYPH_FILE_MENU_CENTRE,
                 fileitem,
                 FALSE);
@@ -1328,12 +1392,8 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
             /* Move the mouse pointer to the centre of the screen. */
             if (FALSE == private->xwarp_mouse_pointer)
             {
-                /* Move that pointer! */
-                gdk_display_warp_pointer (
-                    gtk_widget_get_display (GTK_WIDGET (circular_application_menu)),
-                    gtk_widget_get_screen (GTK_WIDGET (circular_application_menu)),
-                    private->view_width / 2,
-                    private->view_height / 2);
+                /* Move the pointer to the centre of the screen. */
+                _ca_circular_application_menu_device_warp(circular_application_menu);
             }
         }
         else if (fileitem->_type == GLYPH_FILE_MENU_CENTRE)
@@ -1366,12 +1426,8 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
 	
             if (FALSE == private->xwarp_mouse_pointer)
             {
-                /* Move that pointer! */
-                gdk_display_warp_pointer (
-                    gtk_widget_get_display (GTK_WIDGET (circular_application_menu)),
-                    gtk_widget_get_screen (GTK_WIDGET (circular_application_menu)),
-                    private->view_width / 2,
-                    private->view_height / 2);
+                /* Move the pointer to the centre of the screen. */
+                _ca_circular_application_menu_device_warp(circular_application_menu);
             }
         }
         else if (fileitem->_type == GLYPH_FILE)
@@ -1382,15 +1438,13 @@ _ca_circular_application_menu_button_release(GtkWidget* widget, GdkEventButton* 
             GdkAppLaunchContext* context;
             const gchar* desktopfile;
 
-            desktopfile = gmenu_tree_entry_get_desktop_file_path(GMENU_TREE_ENTRY(fileitem->_menutreeitem));
+            desktopfile = gmenu_tree_entry_get_desktop_file_path(fileitem->_menutreeitem);
             g_assert(NULL != desktopfile);
 
 			desktopitem = g_desktop_app_info_new_from_filename (desktopfile);
 			/* context = GDK_APP_LAUNCH_CONTEXT(gdk_app_launch_context_new ());  */
 			context = GDK_APP_LAUNCH_CONTEXT(gdk_display_get_app_launch_context (gtk_widget_get_display (GTK_WIDGET (circular_application_menu))));
-			g_app_info_launch (G_APP_INFO(desktopitem),NULL,G_APP_LAUNCH_CONTEXT(context),&error);
-
-			if (error)
+			if (!g_app_info_launch (G_APP_INFO(desktopitem),NULL,G_APP_LAUNCH_CONTEXT(context), &error))
 			{
 				g_warning ("Launching failed: %s\n", error->message);
 				g_clear_error (&error); /* g_error_free */
@@ -1473,7 +1527,7 @@ _ca_circular_application_menu_hittest(
 {
     CaCircularApplicationMenuPrivate* private;
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     *found_fileleaf = NULL;
     *found_fileitem = NULL;
@@ -1489,7 +1543,7 @@ _ca_circular_application_menu_hittest(
 
         /* Walk from the last opened fileleaf to the root fileleaf so overlapped */
         /* fileitems take precedence. */
-        current_fileleaf = g_last_opened_fileleaf;
+        current_fileleaf = g_last_opened_fileleaf;
         /* Iterate the fileleafs. */
         do
         {
@@ -1591,7 +1645,7 @@ _ca_circular_application_menu_hittest_fileleaf(CaCircularApplicationMenu* circul
     gint tab_x;
     gint tab_y;
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     if (NULL != fileleaf->_central_glyph->_associated_fileitem)
     {
@@ -1646,9 +1700,13 @@ _ca_circular_application_menu_hittest_fileleaf(CaCircularApplicationMenu* circul
 
         /* Retieve the fileleafs associated sub fileitem. */
         if (fileleaf->_child_fileleaf != NULL)
+        {
             associated_fileitem = fileleaf->_child_fileleaf->_central_glyph->_associated_fileitem;
+        }
         else
+        {
             associated_fileitem = NULL;
+        }
 
         /* Iterate the fileleaf fileitems. */
         file_list = g_list_first(fileleaf->_fileitem_list);
@@ -1726,7 +1784,7 @@ _ca_circular_application_menu_render(CaCircularApplicationMenu* circular_applica
     CaFileLeaf* current_fileleaf;
     gboolean render_fileleaf;
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     if (g_root_fileleaf == NULL)
         return;
@@ -1810,6 +1868,8 @@ _ca_circular_application_menu_render(CaCircularApplicationMenu* circular_applica
 static void
 _ca_circular_application_menu_render_reflection(CaCircularApplicationMenu* circular_application_menu, cairo_t* cr)
 {
+    // see GskBlurMode Gtk+4.0
+
     CaCircularApplicationMenuPrivate* private;
     double x1;
     double y1;
@@ -1822,12 +1882,13 @@ _ca_circular_application_menu_render_reflection(CaCircularApplicationMenu* circu
     gint width;
     gint height;
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     cairo_fill_extents(cr, &x1, &y1, &x2, &y2);
 
-    width = 1472;//gdk_pixbuf_get_width(private->light_pixbuf);
-    height = 50;//gdk_pixbuf_get_height(private->light_pixbuf);
+    // 1472x50 the reflection will be stretched.
+    width = gdk_pixbuf_get_width(private->light_pixbuf);
+    height = gdk_pixbuf_get_height(private->light_pixbuf);
 
     /* Offset the image. */
     offset_x_start = ((gint)y1 / height) * 31;
@@ -1837,6 +1898,8 @@ _ca_circular_application_menu_render_reflection(CaCircularApplicationMenu* circu
     cairo_clip_preserve(cr);
 
     x = offset_x_start;
+
+    //g_print("Render reflection: w:%d h:%d t:%d b:%d\n", width, height, (y1 - offset_y_start), y2);
 
     for(y = (y1 - offset_y_start); y < y2; y += height)
     {
@@ -1867,7 +1930,7 @@ _ca_circular_application_menu_render_fileleaf(
     GList* file_list;
     CaFileItem* associated_fileitem;
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     /* Render the fileleaf. */
     if (fileleaf == g_disassociated_fileleaf)
@@ -2261,6 +2324,7 @@ _ca_circular_application_menu_render_fileleaf(
         GdkPixbuf* pixbuf;
         gint centre_iconsize;
         gboolean free_pixbuf;
+        GError* error = NULL;
 
         free_pixbuf = TRUE;
 
@@ -2278,7 +2342,11 @@ _ca_circular_application_menu_render_fileleaf(
             }
             else
             {
-                pixbuf = gdk_pixbuf_new_from_inline (-1, close_menu_prelight, FALSE, NULL);
+                if ((pixbuf = gdk_pixbuf_new_from_resource(RESOURCE_PATH"close-menu-prelight.png", &error)) == NULL)
+                {
+                    g_warning ("Resource not found: %s\n", error->message);
+                    g_clear_error (&error); /* g_error_free */
+                }
             }
         }
         else
@@ -2293,7 +2361,11 @@ _ca_circular_application_menu_render_fileleaf(
             }
             else
             {
-                pixbuf = gdk_pixbuf_new_from_inline (-1, close_menu_normal, FALSE, NULL);
+                if ((pixbuf = gdk_pixbuf_new_from_resource(RESOURCE_PATH"close-menu-normal.png", &error)) == NULL)
+                {
+                    g_warning ("Resource not found: %s\n", error->message);
+                    g_clear_error (&error); /* g_error_free */
+                }
             }
         }
 
@@ -2317,9 +2389,13 @@ _ca_circular_application_menu_render_fileleaf(
 
     /* Retieve the fileleafs associated sub fileitem. */
     if (fileleaf->_child_fileleaf != NULL)
+    {
         associated_fileitem = fileleaf->_child_fileleaf->_central_glyph->_associated_fileitem;
+    }
     else
+    {
         associated_fileitem = NULL;
+    }
 
     if (fileleaf->_fileitem_list_count == 1)
     {
@@ -2530,15 +2606,24 @@ _ca_circular_application_menu_render_fileleaf(
                         /* Add an arrow. */
 
                         GdkPixbuf* pixbuf;
+                        GError* error = NULL;
 
                         /* Check whether the item is selected. */
                         if (fileitem == g_current_fileitem)
                         {
-                            pixbuf = gdk_pixbuf_new_from_inline (-1, open_sub_menu_prelight, FALSE, NULL);
+                            if ((pixbuf = gdk_pixbuf_new_from_resource(RESOURCE_PATH"open-sub-menu-prelight.png", &error)) == NULL)
+                            {
+                                g_warning ("Resource not found: %s\n", error->message);
+                                g_clear_error (&error); /* g_error_free */
+                            }                            
                         }
                         else
                         {
-                            pixbuf = gdk_pixbuf_new_from_inline (-1, open_sub_menu_normal, FALSE, NULL);
+                            if ((pixbuf = gdk_pixbuf_new_from_resource(RESOURCE_PATH"open-sub-menu-normal.png", &error)) == NULL)
+                            {
+                                g_warning ("Resource not found: %s\n", error->message);
+                                g_clear_error (&error); /* g_error_free */
+                            }                            
                         }
 
                         gdk_cairo_set_source_pixbuf (
@@ -2736,15 +2821,24 @@ _ca_circular_application_menu_render_fileleaf(
                         /* Add an arrow. */
 
                         GdkPixbuf* pixbuf;
+                        GError* error = NULL;
 
                         /* Check whether the item is selected. */
                         if (fileitem == g_current_fileitem)
                         {
-                            pixbuf = gdk_pixbuf_new_from_inline (-1, open_sub_menu_prelight, FALSE, NULL);
+                            if ((pixbuf = gdk_pixbuf_new_from_resource(RESOURCE_PATH"open-sub-menu-prelight.png", &error)) == NULL)
+                            {
+                                g_warning ("Resource not found: %s\n", error->message);
+                                g_clear_error (&error); /* g_error_free */
+                            }                            
                         }
                         else
                         {
-                            pixbuf = gdk_pixbuf_new_from_inline (-1, open_sub_menu_normal, FALSE, NULL);
+                            if ((pixbuf = gdk_pixbuf_new_from_resource(RESOURCE_PATH"open-sub-menu-normal.png", &error)) == NULL)
+                            {
+                                g_warning ("Resource not found: %s\n", error->message);
+                                g_clear_error (&error); /* g_error_free */
+                            }
                         }
 
                         gdk_cairo_set_source_pixbuf (
@@ -2815,7 +2909,7 @@ _ca_circular_application_menu_render_centred_text(
     cairo_text_extents_t complete_text_extents;
     cairo_font_extents_t font_extents;
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     if ((text == NULL) ||
         (strlen(text) == 0))
@@ -2967,8 +3061,8 @@ _ca_circular_application_menu_segment_contains_point(CaCircularApplicationMenu* 
     CaCircularApplicationMenuPrivate* private;
     CaFileLeaf* fileleaf;
     gdouble current_distance;
-    gboolean between_angle;
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    gboolean between_angle;
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     between_angle = FALSE;
 
@@ -3042,8 +3136,8 @@ _ca_circular_application_menu_calculate_radius(CaCircularApplicationMenu* circul
     CaCircularApplicationMenuPrivate* private;
     gint fileitems_total;
     gdouble current_radius;
-    gint centre_iconsize;    
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    gint centre_iconsize;    
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
     
     /* Retrieve the centre iconsize. */
     centre_iconsize = _ca_circular_applications_menu_get_centre_iconsize(circular_application_menu, fileleaf);
@@ -3098,7 +3192,7 @@ _ca_circular_applications_menu_get_centre_iconsize(CaCircularApplicationMenu* ci
     CaCircularApplicationMenuPrivate* private;
     gint iconsize;
     
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     if ((fileleaf == g_root_fileleaf) &&
         (private->emblem_normal != NULL) &&
@@ -3133,7 +3227,7 @@ _ca_circular_application_menu_position_fileleaf_files(CaCircularApplicationMenu*
     gint current_radius;
     gint centre_iconsize;
     
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     /* Assign the fileleaf size. */
     if (fileleaf->_type == ROOT_LEAF)
@@ -3297,17 +3391,19 @@ ca_circular_application_menu_show_leaf(
 {
     /* TODO: make this private. */
     CaCircularApplicationMenuPrivate* private;        
-    GSList* items;
-    GSList* tmp;
+    GMenuTreeDirectory* items;
+    GMenuTreeIter* tmp;
     CaFileLeaf* fileleaf;
     GList* current_list;
     CaFileLeaf* parent_fileleaf;
     gdouble angle;
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     if (menutreedirectory == NULL)
+    {
         return NULL;
+    }
 
     if (fileitem != NULL)
     {
@@ -3337,7 +3433,6 @@ ca_circular_application_menu_show_leaf(
 
     /* Create the fileleafs central glyph. */
     fileleaf->_central_glyph = g_new(CaFileItem, 1);
-    fileleaf->_central_glyph->_icon = NULL;
     fileleaf->_central_glyph->_pixbuf = NULL;
     fileleaf->_central_glyph->_associated_fileitem = disassociated ? NULL : fileitem;   /* Keep a reference to the associated fileitems. */
     fileleaf->_central_glyph->_assigned_fileleaf = fileleaf;
@@ -3371,80 +3466,108 @@ ca_circular_application_menu_show_leaf(
     current_list = NULL;
 
     /* Iterate all files. */
-    items = gmenu_tree_directory_get_contents(menutreedirectory);
-    tmp = items;
+    
+    //items = gmenu_tree_directory_get_parent(menutreedirectory);
+
+    tmp = gmenu_tree_directory_iter (menutreedirectory);
+    GMenuTreeItemType itemtype;
+
     /* Iterate all files in the source directory. */
-    while (tmp != NULL)
+    while ((itemtype = gmenu_tree_iter_next(tmp)) != GMENU_TREE_ITEM_INVALID)
     {
-        GMenuTreeItem* current_item;
-        GMenuTreeItem* resolved_item;
-        GMenuTreeItemType itemtype;
+        gpointer resolved_item;
 
-        current_item = GMENU_TREE_ITEM(tmp->data);
-        g_assert(current_item != NULL);
-
-        itemtype = gmenu_tree_item_get_type(current_item);
+        /* Ignore unsupported types. */
+        if ((itemtype == GMENU_TREE_ITEM_INVALID) ||
+            (itemtype == GMENU_TREE_ITEM_SEPARATOR) ||
+            (itemtype == GMENU_TREE_ITEM_HEADER))
+        {
+            continue;
+        }
 
         resolved_item = NULL;
 
+        // if (itemtype == GMENU_TREE_ITEM_ALIAS)
+        // {
+        //     resolved_item = gmenu_tree_iter_get_alias (tmp);
+        //     itemtype = gmenu_tree_alias_get_aliased_item_type (resolved_item);
+        // }
+
         if (itemtype == GMENU_TREE_ITEM_ALIAS)
         {
-            resolved_item = gmenu_tree_alias_get_item (GMENU_TREE_ALIAS (current_item));
-            itemtype = gmenu_tree_item_get_type (resolved_item);
-
-            if (itemtype != GMENU_TREE_ITEM_ENTRY)
-            {
-                resolved_item = NULL;
-            }
+            resolved_item = gmenu_tree_iter_get_alias (tmp);
+            //itemtype = gmenu_tree_alias_get_aliased_item_type (resolved_item);            
         }
-        else
+        else if (itemtype == GMENU_TREE_ITEM_ENTRY)
         {
-            resolved_item = current_item;
+            resolved_item = gmenu_tree_iter_get_entry (tmp);
+            //itemtype = gmenu_tree_alias_get_aliased_entry (resolved_item);            
+        }
+        else if (itemtype == GMENU_TREE_ITEM_DIRECTORY)
+        {
+            resolved_item = gmenu_tree_iter_get_directory (tmp);
+            //itemtype = gmenu_tree_alias_get_aliased_directory (resolved_item);            
         }
 
-        if (resolved_item == NULL)
-        {
-            gmenu_tree_item_unref (current_item);
-        }
-        else if ((itemtype == GMENU_TREE_ITEM_ENTRY) ||
-            (itemtype == GMENU_TREE_ITEM_DIRECTORY))
+        if (NULL != resolved_item)
         {
             CaFileItem* current_fileitem;
+            GIcon* icon;
 
             /* Create a new fileitem. */
             current_fileitem = g_new(CaFileItem, 1);
             current_fileitem->_type = (itemtype == GMENU_TREE_ITEM_DIRECTORY) ? GLYPH_FILE_MENU : GLYPH_FILE;
             current_fileitem->_menutreeitem = resolved_item;
-			current_fileitem->_icon = (current_fileitem->_menutreeitem != NULL) ?
-				gmenu_tree_entry_get_icon(GMENU_TREE_ENTRY(current_fileitem->_menutreeitem)) :
+			icon = (current_fileitem->_menutreeitem != NULL) ?
+				gmenu_tree_directory_get_icon(current_fileitem->_menutreeitem) :
 				NULL;
 
-			/* Retrieve a pixbuf associated with the given name. */
-            current_fileitem->_pixbuf = _ca_circular_applications_menu_get_pixbuf_from_name(
-				current_fileitem->_icon,
-				private->icon_width,
-				private->icon_height);
+            if (NULL != icon)
+            {
+                GtkIconInfo* icon_info;
+                
+                icon_info = gtk_icon_theme_lookup_by_gicon(
+                    gtk_icon_theme_get_default (),
+                    icon,
+                    private->normal_iconsize,
+                    GTK_ICON_LOOKUP_USE_BUILTIN);
 
-            g_assert(current_fileitem->_pixbuf != NULL);
+                if (NULL == icon_info)
+                {
+                    /* Ignore the item if their is no available icon_info.*/
+                    continue;
+                }                
 
-            current_fileitem->_assigned_fileleaf = fileleaf;
-            current_fileitem->_parent_angle = 0;
-            current_fileitem->_circular_angle_share = 0.0;
-            current_fileitem->_parent_radius = 0;
-            current_fileitem->_associated_fileitem = NULL;
-            current_fileitem->_segment_render = NULL;
+                /* Retrieve a pixbuf associated with the given name. */
+                current_fileitem->_pixbuf = _ca_circular_applications_menu_get_pixbuf_from_name(
+                    icon_info,
+                    private->icon_width,
+                    private->icon_height);
+                g_assert(current_fileitem->_pixbuf != NULL);
 
-            current_list = g_list_prepend(current_list, (gpointer)current_fileitem);
-            fileleaf->_fileitem_list_count++;
+                current_fileitem->_assigned_fileleaf = fileleaf;
+                current_fileitem->_parent_angle = 0;
+                current_fileitem->_circular_angle_share = 0.0;
+                current_fileitem->_parent_radius = 0;
+                current_fileitem->_associated_fileitem = NULL;
+                current_fileitem->_segment_render = NULL;
 
-            if (fileleaf->_fileitem_list == NULL)
-                fileleaf->_fileitem_list = current_list;
+                current_list = g_list_prepend(current_list, (gpointer)current_fileitem);
+                fileleaf->_fileitem_list_count++;
+
+                if (fileleaf->_fileitem_list == NULL)
+                {
+                    fileleaf->_fileitem_list = current_list;
+                }
+
+                //g_object_unref(icon_info);
+            }
+            
+            //gmenu_tree_item_unref (resolved_item);
         }
-
-        tmp = tmp->next;
     }
 
-    g_slist_free (items);
+    gmenu_tree_iter_unref (tmp);
 
     /* Keep the refefence to the root fileleaf. */
     if (g_root_fileleaf == NULL)
@@ -3550,7 +3673,7 @@ _ca_circular_application_menu_view_centre_fileleaf(
 {
     CaCircularApplicationMenuPrivate* private;
 
-    private = CA_CIRCULAR_APPLICATION_MENU_GET_PRIVATE(circular_application_menu);
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);
 
     /* Update the view offset. */
     private->view_x_offset = ((x == -1) ? fileleaf->x : x) - (private->view_width / 2);
@@ -3701,31 +3824,30 @@ _ca_circular_applications_menu_imagefinder_path(const gchar* path)
 
 /**
  * _ca_circular_applications_menu_get_pixbuf_from_name:
- * @name: The name of the pixbuf to retrieve.
+ * @icon_info: The GtkIconInfo to use when retrieving the pixbuf.
  * @width: The desired width of the retrieved pixbuf.
  * @height: The desired height of the retrieved pixbuf.
  *
- * Retrieves a pixbuf associated with the given name.
+ * Retrieves a pixbuf associated with the given icon filename.
  *
  * Returns: The newly created pixbuf; otherwise NULL.
  */
 static GdkPixbuf*
-_ca_circular_applications_menu_get_pixbuf_from_name(const char* name, gint width, gint height)
+_ca_circular_applications_menu_get_pixbuf_from_name(GtkIconInfo* icon_info, gint width, gint height)
 {
     GdkPixbuf* icon;
 
     icon = NULL;
 
-    if (name != NULL)
-    {
-        GdkScreen* screen;
-        GtkIconTheme* theme;
-        GtkIconInfo* icon_info;
+    const gchar* icon_filename = gtk_icon_info_get_filename(icon_info);
 
-        screen = gdk_screen_get_default();
-        theme = gtk_icon_theme_get_for_screen (screen);
-    
-        icon_info = gtk_icon_theme_lookup_icon (		    theme,		    name,		    width,		    GTK_ICON_LOOKUP_USE_BUILTIN);   /* Previous setting was GTK_ICON_LOOKUP_NO_SVG. */
+    //g_info("Processing %d %d %s\n", width, height, icon_filename);
+        
+    if (icon_filename != NULL)
+    {
+        GtkIconTheme* theme;
+
+        theme = gtk_icon_theme_get_default ();
 
         if (icon_info != NULL)
         {
@@ -3735,7 +3857,7 @@ _ca_circular_applications_menu_get_pixbuf_from_name(const char* name, gint width
 			    -1,
 			    NULL);
 
-            gtk_icon_info_free(icon_info);
+            g_object_unref(icon_info);
         }
 
         /* first we try gtkicontheme */
@@ -3743,7 +3865,7 @@ _ca_circular_applications_menu_get_pixbuf_from_name(const char* name, gint width
         {
             icon = gtk_icon_theme_load_icon(
 			    theme,
-			    name,
+			    icon_filename,
 			    width,
 			    GTK_ICON_LOOKUP_FORCE_SVG,
 			    NULL);
@@ -3755,7 +3877,7 @@ _ca_circular_applications_menu_get_pixbuf_from_name(const char* name, gint width
             const gchar* found_path;
 
 		    /* Retrieve an images path if it exists at the given location. */
-            found_path = _ca_circular_applications_menu_imagefinder_path(name);
+            found_path = _ca_circular_applications_menu_imagefinder_path(icon_filename);
 
             if (NULL != found_path)
             {
@@ -3768,10 +3890,15 @@ _ca_circular_applications_menu_get_pixbuf_from_name(const char* name, gint width
 
     if (icon == NULL)
     {
-        /* No icon was found so use a default. */
+        g_print("D\n");
+        /*
+        No icon was found so use a default.
+        GTK+3 has moved over to the freedesktop.org Icon Naming Specification and internationalised labels. 
+        https://specifications.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
+        */
         icon = gtk_icon_theme_load_icon (
             gtk_icon_theme_get_default (),
-            GTK_STOCK_FILE,
+            "application-x-executable",
             width,
             GTK_ICON_LOOKUP_NO_SVG,
             NULL);
@@ -3799,4 +3926,30 @@ _ca_circular_application_menu_on_fade_tick(gpointer data)
     circular_application_menu = CA_CIRCULAR_APPLICATION_MENU(data);
 
     return TRUE;
+}
+
+/**
+ * _ca_circular_application_menu_on_fade_tick:
+ * @circular_application_menu: A CaCircularApplicationMenu pointer to the circular-application-menu widget instance.
+ *
+ * Move the pointer to the centre of the screen.
+ **/
+static void 
+_ca_circular_application_menu_device_warp(CaCircularApplicationMenu* circular_application_menu)
+{
+    CaCircularApplicationMenuPrivate* private;
+    GdkDisplay* display;
+    GdkDevice* device;
+
+    private = _ca_circular_application_menu_get_instance_private(circular_application_menu);    
+
+    //display = gdk_display_get_default();
+    display = gtk_widget_get_display (GTK_WIDGET (circular_application_menu));
+    device = gdk_seat_get_pointer(gdk_display_get_default_seat(display));
+
+    gdk_device_warp (
+        device,
+        gtk_widget_get_screen (GTK_WIDGET (circular_application_menu)),
+        private->view_width / 2,
+        private->view_height / 2);
 }

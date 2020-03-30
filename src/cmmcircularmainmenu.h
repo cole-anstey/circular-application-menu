@@ -24,7 +24,7 @@
 #include <gtk/gtk.h>
 
 #define GMENU_I_KNOW_THIS_IS_UNSTABLE
-#include <gnome-menus/gmenu-tree.h>
+#include <gnome-menus-3.0/gmenu-tree.h>
 
 G_BEGIN_DECLS
 
@@ -172,8 +172,7 @@ struct _CaSegmentRender
 struct _CaFileItem
 {
     GlyphType _type;
-    GMenuTreeItem* _menutreeitem;
-    const gchar* _icon;
+    gpointer _menutreeitem;
     GdkPixbuf* _pixbuf;
     CaFileLeaf* _assigned_fileleaf;
     CaFileItem* _associated_fileitem;
